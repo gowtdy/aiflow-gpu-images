@@ -1,0 +1,27 @@
+services:
+  webserver:
+    image: aiflowbase:0.2
+    #image: tkaudio:0.1
+    #image: pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
+    hostname: aiflowbase
+    container_name: aiflowbase
+    user: "aigc:aigc"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "5000:5000"
+    environment:
+      - APP_PORT=5000
+    volumes:
+#      - /home/aigc/work/models/aivoice_models/sound_models/stable-audio-open-1.0:/app/models/stable-audio-open-1.0
+#      - /home/aigc/work/models/aichat_models/google-t5:/app/models/google-t5
+      - /home/aigc/data/aioutput/logs:/app/baselog
+#     - /home/aigc/data/aioutput/sounds/tk:/app/output
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    #tty: true
