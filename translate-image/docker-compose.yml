@@ -1,0 +1,22 @@
+services:
+  mtserver:
+    image: mtserver-image:0.1
+    hostname: mtserver
+    container_name: mtserver
+    restart: always
+    network_mode: host
+    user: "aigc:aigc"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+      - 192.168.3.1
+    environment:
+      - APP_PORT=5400
+      - WORKERS=5
+      - TZ=Asia/Shanghai
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/aigc/data/aioutput/mtserver-logs/mtserver:/app/log
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

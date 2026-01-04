@@ -1,0 +1,1 @@
+docker build -t mtserver-image:0.1 -f Dockerfile .
