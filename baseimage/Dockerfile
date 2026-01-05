@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y software-properties-common telnet net-tools\
     && add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
     && apt-get update \
-    && apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev wget vim rsync openssh-client
+    && apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev wget vim rsync openssh-client git
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
 # 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
