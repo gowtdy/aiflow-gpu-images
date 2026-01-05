@@ -26,5 +26,5 @@ ENV PATH="/home/aigc/.local/bin:$PATH"
 
 WORKDIR /app
 
-#ENTRYPOINT ["tail", "-f", "/dev/null"]
-ENTRYPOINT ["./start_mt_server.sh"]
+ENTRYPOINT ["tail", "-f", "/dev/null"]
+#ENTRYPOINT ["./start_mt_server.sh"]
