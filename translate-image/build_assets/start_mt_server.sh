@@ -1,3 +1,13 @@
 #!/bin/sh
 
 echo "Starting mt_worker"
+export CUDA_VISIBLE_DEVICES=${GPU_INDEX:-0}
+echo "Using GPU: ${CUDA_VISIBLE_DEVICES}"
+python3 -m vllm.entrypoints.openai.api_server --model /app/models/mt_models \
+  --host 0.0.0.0 \
+  --port ${APP_PORT:-5400} \
+  --tensor-parallel-size ${TENSOR_PARALLEL_SIZE:-1} \
+  --dtype bfloat16 \
+  --quantization experts_int8 \
+  --served-model-name mt-model \
+  2>&1 | tee /app/log/mt_server.log
