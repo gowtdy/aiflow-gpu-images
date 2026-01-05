@@ -12,5 +12,4 @@ python3 -m vllm.entrypoints.openai.api_server --model /app/models/mt_models \
   --gpu_memory_utilization 0.5 \
   --served-model-name mt-model \
   --trust-remote-code \
-  --hf-overrides '{"architectures": ["LlamaForCausalLM"]}' \
   2>&1 | tee /app/log/mt_server.log
