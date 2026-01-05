@@ -1,4 +1,4 @@
-FROM aiflowbase:0.2
+FROM mt-baseimage:0.1
 
 USER root
 
@@ -20,11 +20,11 @@ USER aigc
 # 设置Python用户安装路径到PATH
 ENV PATH="/home/aigc/.local/bin:$PATH"
 
-RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
-  && python3 -m pip install -r /app/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
-  && python3 -m pip install git+https://github.com/huggingface/transformers@4970b23cedaf745f963779b4eae68da281e8c6ca
+#RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
+#  && python3 -m pip install -r /app/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
+#  && python3 -m pip install git+https://github.com/huggingface/transformers@4970b23cedaf745f963779b4eae68da281e8c6ca
 
 WORKDIR /app
 
-ENTRYPOINT ["tail", "-f", "/dev/null"]
-#ENTRYPOINT ["./start_gn_upload_server.sh"]
+#ENTRYPOINT ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["./start_mt_server.sh"]
