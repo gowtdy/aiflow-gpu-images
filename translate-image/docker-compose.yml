@@ -23,6 +23,7 @@ services:
       - TZ=Asia/Shanghai
       - GPU_INDEX=0
       - TENSOR_PARALLEL_SIZE=1
+      - NVIDIA_DISABLE_REQUIRE=1  # docker使用cuda 12.6，需要的nvidia driver必须 560以上，但现在线上driver安装的是550，设置此项忽略driver版本检查
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
