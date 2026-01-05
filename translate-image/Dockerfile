@@ -6,9 +6,9 @@ USER root
 RUN rm -rf /app/*
 COPY build_assets/ /app/
 
-RUN mkdir -p /app/log
-RUN chown -R aigc:aigc /app/log
-RUN chmod -R 755 /app/log
+RUN mkdir -p /app/log /app/models/mt_models
+RUN chown -R aigc:aigc /app/log /app/models/mt_models
+RUN chmod -R 755 /app/log /app/models/mt_models
 
 # 设置启动脚本权限（需要在 root 用户下执行）
 RUN chmod +x /app/start_mt_server.sh
