@@ -10,13 +10,23 @@ services:
       - 8.8.8.8
       - 1.1.1.1
       - 192.168.3.1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     environment:
       - APP_PORT=5400
       - WORKERS=5
       - TZ=Asia/Shanghai
+      - GPU_INDEX=1
+      - TENSOR_PARALLEL_SIZE=1
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+      - /home/aigc/work/models/translate_models/HY-MT1.5-7B:/app/models/mt_models
       - /home/aigc/data/aioutput/mtserver-logs/mtserver:/app/log
     extra_hosts:
       - "host.docker.internal:host-gateway"
