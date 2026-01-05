@@ -21,7 +21,7 @@ services:
       - APP_PORT=5400
       - WORKERS=5
       - TZ=Asia/Shanghai
-      - GPU_INDEX=1
+      - GPU_INDEX=0
       - TENSOR_PARALLEL_SIZE=1
     volumes:
       - /etc/localtime:/etc/localtime:ro
