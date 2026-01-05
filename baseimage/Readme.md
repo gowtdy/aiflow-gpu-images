@@ -1,0 +1,1 @@
+注意：build前需要单独下载 flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl 文件放在 build_assets 目录。
