@@ -8,6 +8,7 @@ python3 -m vllm.entrypoints.openai.api_server --model /app/models/mt_models \
   --port ${APP_PORT:-5400} \
   --tensor-parallel-size ${TENSOR_PARALLEL_SIZE:-1} \
   --dtype bfloat16 \
-  --gpu_memory_utilization 0.92 \
+  --max-model-len 1024 \
+  --gpu_memory_utilization 0.5 \
   --served-model-name mt-model \
   2>&1 | tee /app/log/mt_server.log
