@@ -1,0 +1,1 @@
+注意：build前需要单独下载 flash_attn-2.8.3+cu126torch2.8-cp311-cp311-linux_x86_64.whl 目录。

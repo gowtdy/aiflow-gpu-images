@@ -1,0 +1,5 @@
+# Core Python packages
+vllm==0.11.0
+transformers==4.56.0
+accelerate==0.33.0
+
