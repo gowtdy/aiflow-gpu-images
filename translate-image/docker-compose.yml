@@ -19,7 +19,7 @@ services:
               capabilities: [gpu]
     environment:
       - APP_PORT=5400
-      - WORKERS=5
+      - WORKERS=1
       - TZ=Asia/Shanghai
       - GPU_INDEX=0
       - TENSOR_PARALLEL_SIZE=1
