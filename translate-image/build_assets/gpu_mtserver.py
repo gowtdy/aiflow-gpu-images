@@ -45,23 +45,42 @@ gpu_index = int(os.getenv('GPU_INDEX', '0'))
 device_map = {"": f"cuda:{gpu_index}"} if gpu_index >= 0 else "auto"
 logger.info(f"Loading model on GPU {gpu_index} with device_map: {device_map}")
 
-# 优化: 使用低精度加载（如果模型支持）
+# 优化: 使用低精度加载和Flash Attention（如果模型支持）
 # 注意：如果模型已经是FP8量化，可能不需要这个，但可以尝试
 try:
     model = AutoModelForCausalLM.from_pretrained(
         model_path, 
         device_map=device_map,
-        torch_dtype=torch.bfloat16  # 使用bfloat16减少显存占用
+        torch_dtype=torch.bfloat16,  # 使用bfloat16减少显存占用
+        attn_implementation="flash_attention_2"  # 关键优化：使用Flash Attention
     )
-    logger.info("Model loaded with bfloat16 precision")
+    logger.info("Model loaded with bfloat16 precision and Flash Attention 2")
 except Exception as e:
-    # 如果模型不支持bfloat16，回退到默认加载
-    logger.warning(f"Failed to load model with bfloat16: {e}, falling back to default loading")
-    model = AutoModelForCausalLM.from_pretrained(model_path, device_map=device_map)
+    # 如果Flash Attention不可用，尝试其他优化
+    logger.warning(f"Failed to load with Flash Attention: {e}, trying alternative...")
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, 
+            device_map=device_map,
+            torch_dtype=torch.bfloat16
+        )
+        logger.info("Model loaded with bfloat16 precision")
+    except Exception as e2:
+        # 如果模型不支持bfloat16，回退到默认加载
+        logger.warning(f"Failed to load model with bfloat16: {e2}, falling back to default loading")
+        model = AutoModelForCausalLM.from_pretrained(model_path, device_map=device_map)
 
 # 优化: 确保模型在推理模式
 model.eval()
 logger.info("Model set to evaluation mode")
+
+# 优化: 如果支持，启用torch编译优化（PyTorch 2.0+）
+# 注意：这可能会增加首次推理的延迟，但会减少显存占用
+try:
+    model = torch.compile(model, mode="reduce-overhead", fullgraph=False)
+    logger.info("Model compiled with torch.compile")
+except Exception as e:
+    logger.warning(f"torch.compile not available: {e}")
 
 @app.post("/mtapi/translate")
 async def translate(request: Request):
@@ -73,7 +92,7 @@ async def translate(request: Request):
         src_lang = data.get('src_lang', '')
         tgt_lang = data.get('tgt_lang', 'en')
         logid = data.get('logid')
-        max_new_tokens = data.get('max_new_tokens', 512)  # 优化: 默认降低到512，减少KV cache占用
+        max_new_tokens = data.get('max_new_tokens', 256)  # 优化: 进一步降低默认值到256，减少KV cache占用
         
         # 验证必需参数
         if not text:
@@ -99,27 +118,48 @@ async def translate(request: Request):
             return_tensors="pt"
         )
         
+        # 优化: 限制输入长度，避免过长的输入序列
+        max_input_length = 512
+        input_length = tokenized_chat.shape[1]
+        if input_length > max_input_length:
+            logger.warning(f"[logid:{logid}] Input too long ({input_length} tokens), truncating to {max_input_length}")
+            tokenized_chat = tokenized_chat[:, -max_input_length:]
+            input_length = tokenized_chat.shape[1]
+        
         # 调用模型生成翻译
         logger.debug(f"[logid:{logid}] Generating translation...")
         # 优化: 使用torch.inference_mode()禁用梯度计算，减少显存占用
         with torch.inference_mode():
+            # 优化: 在生成前清理缓存
+            torch.cuda.empty_cache()
+            
             outputs = model.generate(
                 tokenized_chat.to(model.device), 
-                max_new_tokens=min(max_new_tokens, 1024),  # 限制最大长度，减少KV cache占用
+                max_new_tokens=min(max_new_tokens, 512),  # 进一步限制最大长度
                 do_sample=False,  # 贪婪解码，减少计算
                 use_cache=True,  # 使用KV cache（默认开启）
-                pad_token_id=tokenizer.eos_token_id if tokenizer.eos_token_id else tokenizer.pad_token_id,  # 避免padding
+                pad_token_id=tokenizer.eos_token_id if tokenizer.eos_token_id else tokenizer.pad_token_id,
+                # 关键优化：减少显存占用
+                output_scores=False,  # 不返回scores，节省显存
+                output_attentions=False,  # 不返回attention weights，节省显存
+                return_dict_in_generate=False,  # 只返回tokens，不返回完整字典
             )
         
-        # 优化: 生成后清理GPU缓存
+        # 优化: 立即删除中间变量并清理缓存
+        del tokenized_chat
         torch.cuda.empty_cache()
         
         # 提取新生成的 tokens（排除输入部分）
-        input_length = tokenized_chat.shape[1]
-        generated_tokens = outputs[0][input_length:]
+        # model.generate() 返回的是 LongTensor，shape 为 [batch_size, sequence_length]
+        # 由于 return_dict_in_generate=False，直接返回张量
+        generated_tokens = outputs[0][input_length:] if outputs.dim() > 1 else outputs[input_length:]
         
         # 解码翻译结果
         translated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
+        
+        # 优化: 清理输出张量
+        del outputs, generated_tokens
+        torch.cuda.empty_cache()
         
         logger.info(f"[logid:{logid}] Translation completed successfully, src_lang={src_lang}, tgt_lang={tgt_lang}, text={text}, translated_text={translated_text}")
         
