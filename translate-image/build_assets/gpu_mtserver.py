@@ -5,7 +5,7 @@ import time
 from fastapi import FastAPI, Request, Query
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from utility.log import setup_logger
+from utility.logset import setup_logger
 from utility.util import genid, gen_res_dict
 
 app = FastAPI()
@@ -98,10 +98,9 @@ async def translate(request: Request):
             ret=0,
             msg="success",
             dt={
-                "logid": logid,
                 "translated_text": translated_text,
-                "src_lang": src_lang,
-                "tgt_lang": tgt_lang
+                "tgt_lang": tgt_lang,
+                "logid": logid,
             }
         )
         
