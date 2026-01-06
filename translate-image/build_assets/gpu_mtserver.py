@@ -51,7 +51,6 @@ try:
     model = AutoModelForCausalLM.from_pretrained(
         model_path, 
         device_map=device_map,
-        torch_dtype=torch.bfloat16,  # 使用bfloat16减少显存占用
         attn_implementation="flash_attention_2"  # 关键优化：使用Flash Attention
     )
     logger.info("Model loaded with bfloat16 precision and Flash Attention 2")
@@ -61,8 +60,7 @@ except Exception as e:
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_path, 
-            device_map=device_map,
-            torch_dtype=torch.bfloat16
+            device_map=device_map
         )
         logger.info("Model loaded with bfloat16 precision")
     except Exception as e2:
