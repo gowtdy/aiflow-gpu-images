@@ -82,6 +82,7 @@ llvmlite==0.44.0
 numba==0.61.2
 joblib==1.4.2
 threadpoolctl==3.6.0
+fasttext==0.9.3
 
 # Parsing / CLI tools
 click-plugins==1.1.1
