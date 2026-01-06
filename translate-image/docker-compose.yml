@@ -27,7 +27,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      - /home/aigc/work/models/translate_models/HY-MT1.5-1.8B:/app/models/mt_models
+      - /home/aigc/work/models/translate_models/HY-MT1.5-7B-FB8:/app/models/mt_models
       - /home/aigc/data/aioutput/mtserver-logs/mtserver:/app/log
     extra_hosts:
       - "host.docker.internal:host-gateway"
