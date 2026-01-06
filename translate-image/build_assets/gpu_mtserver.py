@@ -2,6 +2,7 @@ import os
 import logging
 import argparse
 import time
+import torch
 from fastapi import FastAPI, Request, Query
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -43,7 +44,24 @@ tokenizer = AutoTokenizer.from_pretrained(model_path)
 gpu_index = int(os.getenv('GPU_INDEX', '0'))
 device_map = {"": f"cuda:{gpu_index}"} if gpu_index >= 0 else "auto"
 logger.info(f"Loading model on GPU {gpu_index} with device_map: {device_map}")
-model = AutoModelForCausalLM.from_pretrained(model_path, device_map=device_map)
+
+# 优化: 使用低精度加载（如果模型支持）
+# 注意：如果模型已经是FP8量化，可能不需要这个，但可以尝试
+try:
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path, 
+        device_map=device_map,
+        torch_dtype=torch.bfloat16  # 使用bfloat16减少显存占用
+    )
+    logger.info("Model loaded with bfloat16 precision")
+except Exception as e:
+    # 如果模型不支持bfloat16，回退到默认加载
+    logger.warning(f"Failed to load model with bfloat16: {e}, falling back to default loading")
+    model = AutoModelForCausalLM.from_pretrained(model_path, device_map=device_map)
+
+# 优化: 确保模型在推理模式
+model.eval()
+logger.info("Model set to evaluation mode")
 
 @app.post("/mtapi/translate")
 async def translate(request: Request):
@@ -55,6 +73,7 @@ async def translate(request: Request):
         src_lang = data.get('src_lang', '')
         tgt_lang = data.get('tgt_lang', 'en')
         logid = data.get('logid')
+        max_new_tokens = data.get('max_new_tokens', 512)  # 优化: 默认降低到512，减少KV cache占用
         
         # 验证必需参数
         if not text:
@@ -82,7 +101,18 @@ async def translate(request: Request):
         
         # 调用模型生成翻译
         logger.debug(f"[logid:{logid}] Generating translation...")
-        outputs = model.generate(tokenized_chat.to(model.device), max_new_tokens=2048)
+        # 优化: 使用torch.inference_mode()禁用梯度计算，减少显存占用
+        with torch.inference_mode():
+            outputs = model.generate(
+                tokenized_chat.to(model.device), 
+                max_new_tokens=min(max_new_tokens, 1024),  # 限制最大长度，减少KV cache占用
+                do_sample=False,  # 贪婪解码，减少计算
+                use_cache=True,  # 使用KV cache（默认开启）
+                pad_token_id=tokenizer.eos_token_id if tokenizer.eos_token_id else tokenizer.pad_token_id,  # 避免padding
+            )
+        
+        # 优化: 生成后清理GPU缓存
+        torch.cuda.empty_cache()
         
         # 提取新生成的 tokens（排除输入部分）
         input_length = tokenized_chat.shape[1]
@@ -109,7 +139,9 @@ async def translate(request: Request):
         # 错误处理
         logid = data.get('logid') if 'data' in locals() and data else genid(0, int(time.time()))
         error_msg = f"Translation failed: {str(e)}"
-        logger.error(f"[logid:{logid}] {error_msg}, text={text}", exc_info=True)
+        logger.error(f"[logid:{logid}] {error_msg},", exc_info=True)
+        # 优化: 确保错误时也清理缓存
+        torch.cuda.empty_cache()
         return gen_res_dict(ret=-1, msg=error_msg, dt={"logid": logid})
 
 if __name__ == "__main__":
