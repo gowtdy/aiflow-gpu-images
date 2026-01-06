@@ -91,7 +91,7 @@ async def translate(request: Request):
         # 解码翻译结果
         translated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
         
-        logger.info(f"[logid:{logid}] Translation completed successfully")
+        logger.info(f"[logid:{logid}] Translation completed successfully, src_lang={src_lang}, tgt_lang={tgt_lang}, text={text}, translated_text={translated_text}")
         
         # 返回成功响应
         return gen_res_dict(
@@ -99,6 +99,7 @@ async def translate(request: Request):
             msg="success",
             dt={
                 "translated_text": translated_text,
+                "src_lang": src_lang,
                 "tgt_lang": tgt_lang,
                 "logid": logid,
             }
@@ -108,7 +109,7 @@ async def translate(request: Request):
         # 错误处理
         logid = data.get('logid') if 'data' in locals() and data else genid(0, int(time.time()))
         error_msg = f"Translation failed: {str(e)}"
-        logger.error(f"[logid:{logid}] {error_msg}", exc_info=True)
+        logger.error(f"[logid:{logid}] {error_msg}, text={text}", exc_info=True)
         return gen_res_dict(ret=-1, msg=error_msg, dt={"logid": logid})
 
 if __name__ == "__main__":
