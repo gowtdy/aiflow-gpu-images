@@ -15,7 +15,8 @@ RUN apt update && apt install -y \
     pkg-config texinfo wget yasm nasm zlib1g-dev \
     libx264-dev libx265-dev libnuma-dev libvpx-dev \
     libfdk-aac-dev libmp3lame-dev libopus-dev \
-    libaom-dev libwebp-dev meson ninja-build \
+    libaom-dev libwebp-dev libssl-dev \
+    meson ninja-build \
     nvidia-cuda-toolkit
 
 WORKDIR /tmp
@@ -40,15 +41,15 @@ RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
 COPY build_assets/ /app/
 
 #RUN pkg-config --modversion SvtAv1Enc
+ENV CUDA_PATH=/usr/local/cuda
 
 WORKDIR /app
 RUN tar xvf ffmpeg-8.0.1.tar.xz
 WORKDIR /app/ffmpeg-8.0.1
 RUN ./configure \
     --prefix=/opt/ffmpeg \
-    --pkg-config-flags="--static" \
-    --extra-cflags="-I/usr/local/cuda/include" \
-    --extra-ldflags="-L/usr/local/cuda/lib64" \
+    --extra-cflags="-I${CUDA_PATH}/include" \
+    --extra-ldflags="-L${CUDA_PATH}/lib64" \
     --extra-libs="-lpthread -lm" \
     --enable-gpl \
     --enable-nonfree \
@@ -94,6 +95,7 @@ USER aigc
 
 # 设置Python用户安装路径到PATH
 ENV PATH="/home/aigc/.local/bin:/opt/ffmpeg/bin:$PATH"
+ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:$LD_LIBRARY_PATH"
 
 # 需要先手动下载一下 flash-attn， wget  https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
