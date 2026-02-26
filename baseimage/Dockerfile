@@ -31,12 +31,10 @@ RUN git clone --depth 1 --branch v2.3.0 https://gitlab.com/AOMediaCodec/SVT-AV1.
 WORKDIR /tmp
 RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
     cd dav1d && \
-    meson setup build --buildtype release --prefix=/usr/local  --libdir=lib && \
+    meson setup build --buildtype release --prefix=/usr/local --libdir=lib && \
     meson compile -C build && \
     meson install -C build && \
     ldconfig && \
-    find /usr/local -name "libdav1d.so*" -type f && \
-    ls -la /usr/local/lib/libdav1d.so* && \
     cd / && rm -rf /tmp/dav1d
 
 # 安装 ffnvcodec（NVIDIA FFmpeg 编解码器头文件）
@@ -84,6 +82,17 @@ RUN ./configure \
 
 RUN make -j$(nproc)
 RUN make install
+
+# 将 dav1d 库复制到 ffmpeg 的 lib 目录
+RUN if [ -f /usr/local/lib/libdav1d.so.7 ]; then \
+        cp -v /usr/local/lib/libdav1d.so* /opt/ffmpeg/lib/ && \
+        ls -la /opt/ffmpeg/lib/libdav1d.so* && \
+        echo "libdav1d copied successfully"; \
+    else \
+        echo "Error: libdav1d.so.7 not found in /usr/local/lib" && \
+        find /usr/local -name "libdav1d.so*" 2>/dev/null && \
+        exit 1; \
+    fi
 
 #--------- runtime image ---------
 FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
