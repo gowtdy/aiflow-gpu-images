@@ -77,6 +77,7 @@ RUN ./configure \
     --enable-openssl \
     --enable-shared \
     --disable-debug \
+    --disable-sndio \
     --disable-doc
 
 RUN make -j$(nproc)
