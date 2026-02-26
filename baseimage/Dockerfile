@@ -21,40 +21,40 @@ RUN apt update && apt install -y \
 # 复制项目文件
 COPY build_assets/ /app/
 
-RUN pkg-config --modversion SvtAv1Enc
+#RUN pkg-config --modversion SvtAv1Enc
 
 WORKDIR /app
 RUN tar xvf ffmpeg-8.0.1.tar.xz
 WORKDIR /app/ffmpeg-8.0.1
-RUN ./configure \
-    --prefix=/opt/ffmpeg \
-    --pkg-config-flags="--static" \
-    --extra-cflags="-I/usr/local/cuda/include" \
-    --extra-ldflags="-L/usr/local/cuda/lib64" \
-    --extra-libs="-lpthread -lm" \
-    --enable-gpl \
-    --enable-nonfree \
-    --enable-libx264 \
-    --enable-libx265 \
-    --enable-libvpx \
-    --enable-libfdk-aac \
-    --enable-libmp3lame \
-    --enable-libopus \
-    --enable-libass \
-    --enable-libsvtav1 \
-    --enable-libaom \
-    --enable-cuda \
-    --enable-nvenc \
-    --enable-libnpp \
-    --enable-libdav1d   # AV1 解码更快 \
-    --enable-libwebp \
-    --enable-openssl \
-    --enable-shared \
-    --disable-debug \
-    --disable-doc
+#RUN ./configure \
+#    --prefix=/opt/ffmpeg \
+#    --pkg-config-flags="--static" \
+#    --extra-cflags="-I/usr/local/cuda/include" \
+#    --extra-ldflags="-L/usr/local/cuda/lib64" \
+#    --extra-libs="-lpthread -lm" \
+#    --enable-gpl \
+#    --enable-nonfree \
+#    --enable-libx264 \
+#    --enable-libx265 \
+#    --enable-libvpx \
+#    --enable-libfdk-aac \
+#    --enable-libmp3lame \
+#    --enable-libopus \
+#    --enable-libass \
+#    --enable-libsvtav1 \
+#    --enable-libaom \
+#    --enable-cuda \
+#    --enable-nvenc \
+#    --enable-libnpp \
+#    --enable-libdav1d   # AV1 解码更快 \
+#    --enable-libwebp \
+#    --enable-openssl \
+#    --enable-shared \
+#    --disable-debug \
+#    --disable-doc
 
-RUN make -j$(nproc)
-RUN make install
+#RUN make -j$(nproc)
+#RUN make install
 
 # --------- runtime image ---------
 #FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
