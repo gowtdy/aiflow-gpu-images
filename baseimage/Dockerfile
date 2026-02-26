@@ -143,6 +143,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
+# 复制从源码编译的库（dav1d）
+COPY --from=builder /usr/local/lib/libdav1d.so* /usr/local/lib/
+RUN ldconfig
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
 # 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
