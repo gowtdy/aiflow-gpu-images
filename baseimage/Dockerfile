@@ -87,13 +87,51 @@ FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
 
 # 安装 ffmpeg 运行时依赖
 RUN apt-get update && apt-get install -y \
+    # libdrm 相关
     libdrm2 \
     libdrm-common \
+    # libxcb 相关（X11 支持）
     libxcb1 \
     libxcb-shm0 \
     libxcb-xfixes0 \
+    libxcb-shape0 \
+    libxcb-render0 \
+    libxcb-randr0 \
+    libxcb-sync1 \
+    libxcb-xinerama0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-util1 \
+    libxcb-xkb1 \
+    libxcb-dri2-0 \
+    libxcb-dri3-0 \
+    libxcb-present0 \
+    libxcb-glx0 \
+    # 视频加速相关
     libva2 \
     libvdpau1 \
+    # 编解码器运行时库
+    libx264-164 \
+    libx265-199 \
+    libvpx7 \
+    libfdk-aac2 \
+    libmp3lame0 \
+    libopus0 \
+    libaom3 \
+    libwebp7 \
+    # libass 相关（字幕支持）
+    libass9 \
+    libfreetype6 \
+    libfontconfig1 \
+    libfribidi0 \
+    libharfbuzz0b \
+    # OpenSSL（加密支持）
+    libssl3 \
+    # 其他可能需要的库
+    libnuma1 \
+    libvorbis0a \
+    libvorbisenc2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
