@@ -15,8 +15,17 @@ RUN apt update && apt install -y \
     pkg-config texinfo wget yasm nasm zlib1g-dev \
     libx264-dev libx265-dev libnuma-dev libvpx-dev \
     libfdk-aac-dev libmp3lame-dev libopus-dev \
-    libaom-dev libsvtav1-dev \
+    libaom-dev \
     nvidia-cuda-toolkit
+
+WORKDIR /tmp
+RUN git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
+    cd SVT-AV1/Build && \
+    cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd / && rm -rf /tmp/SVT-AV1
 
 # 复制项目文件
 COPY build_assets/ /app/
