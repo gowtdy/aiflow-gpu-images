@@ -20,7 +20,7 @@ RUN apt update && apt install -y \
     nvidia-cuda-toolkit
 
 WORKDIR /tmp
-RUN git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
+RUN git clone --depth 1 --branch v2.3.0 https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
     cd SVT-AV1/Build && \
     cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && \
