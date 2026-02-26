@@ -64,7 +64,7 @@ RUN ./configure \
     --enable-cuda \
     --enable-nvenc \
     --enable-libnpp \
-    --enable-libdav1d \ # AV1 解码更快
+    --enable-libdav1d \
     --enable-libwebp \
     --enable-openssl \
     --enable-shared \
