@@ -108,11 +108,18 @@ RUN apt-get update && apt-get install -y \
     libxcb-dri3-0 \
     libxcb-present0 \
     libxcb-glx0 \
+    # X11 Video 扩展
+    libxv1 \
+    # 音频库
+    libasound2 \
+    libsndio7 \
     # 视频加速相关
     libva2 \
+    libva-drm2 \
+    libva-x11-2 \
     libvdpau1 \
-    # 编解码器运行时库
-    libx264-164 \
+    # 编解码器运行时库（根据 ldd 输出确定版本）
+    libx264-163 \
     libx265-199 \
     libvpx7 \
     libfdk-aac2 \
@@ -120,6 +127,7 @@ RUN apt-get update && apt-get install -y \
     libopus0 \
     libaom3 \
     libwebp7 \
+    libwebpmux3 \
     # libass 相关（字幕支持）
     libass9 \
     libfreetype6 \
