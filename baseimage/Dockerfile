@@ -15,7 +15,7 @@ RUN apt update && apt install -y \
     pkg-config texinfo wget yasm nasm zlib1g-dev \
     libx264-dev libx265-dev libnuma-dev libvpx-dev \
     libfdk-aac-dev libmp3lame-dev libopus-dev \
-    libaom-dev meson ninja-build \
+    libaom-dev libwebp-dev meson ninja-build \
     nvidia-cuda-toolkit
 
 WORKDIR /tmp
