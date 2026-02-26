@@ -29,7 +29,7 @@ RUN git clone --depth 1 --branch v2.3.0 https://gitlab.com/AOMediaCodec/SVT-AV1.
     cd / && rm -rf /tmp/SVT-AV1
 
 WORKDIR /tmp
-RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
+RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git --libdir=lib && \
     cd dav1d && \
     meson setup build --buildtype release --prefix=/usr/local && \
     meson compile -C build && \
