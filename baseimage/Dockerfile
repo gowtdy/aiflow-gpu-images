@@ -85,6 +85,17 @@ RUN make install
 #--------- runtime image ---------
 FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
 
+# 安装 ffmpeg 运行时依赖
+RUN apt-get update && apt-get install -y \
+    libdrm2 \
+    libdrm-common \
+    libxcb1 \
+    libxcb-shm0 \
+    libxcb-xfixes0 \
+    libva2 \
+    libvdpau1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
