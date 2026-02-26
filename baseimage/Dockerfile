@@ -1,12 +1,22 @@
-FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # 安装系统依赖（以 root 用户执行）
-RUN apt-get update && apt-get install -y software-properties-common telnet net-tools\
-    && add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
-    && apt-get update \
-    && apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev wget vim rsync openssh-client git
+#RUN apt-get update && apt-get install -y software-properties-common telnet net-tools\
+#    && add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
+#    && apt-get update \
+#    && apt-get install -y ffmpeg libavutil-dev libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev wget vim rsync openssh-client git
+
+RUN apt update && apt install -y \
+    autoconf automake build-essential cmake git-core libass-dev \
+    libfreetype6-dev libsdl2-dev libtool libva-dev libvdpau-dev \
+    libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev \
+    pkg-config texinfo wget yasm nasm zlib1g-dev \
+    libx264-dev libx265-dev libnuma-dev libvpx-dev \
+    libfdk-aac-dev libmp3lame-dev libopus-dev \
+    libaom-dev libsvtav1-dev \
+    nvidia-cuda-toolkit
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
 # 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
@@ -15,14 +25,54 @@ RUN groupadd -g 1001 aigc && useradd -m -s /bin/bash -u 1001 -g 1001 aigc
 
 # 复制项目文件
 COPY build_assets/ /app/
+
+WORKDIR /app
+Run tar xvf ffmpeg-8.0.1.tar.xz
+WORKDIR /app/ffmpeg-8.0.1
+RUN ./configure \
+    --prefix=/opt/ffmpeg \
+    --pkg-config-flags="--static" \
+    --extra-cflags="-I/usr/local/cuda/include" \
+    --extra-ldflags="-L/usr/local/cuda/lib64" \
+    --extra-libs="-lpthread -lm" \
+    --enable-gpl \
+    --enable-nonfree \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-libvpx \
+    --enable-libfdk-aac \
+    --enable-libmp3lame \
+    --enable-libopus \
+    --enable-libass \
+    --enable-libsvtav1 \
+    --enable-libaom \
+    --enable-cuda \
+    --enable-nvenc \
+    --enable-libnpp \
+    --enable-shared \
+    --disable-debug \
+    --disable-doc
+
+RUN make -j$(nproc)
+RUN make install
+
+# --------- runtime image ---------
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
+
+COPY --from=builder /opt/ffmpeg /opt/ffmpeg
+
+RUN groupadd -g 1001 aigc && useradd -m -s /bin/bash -u 1001 -g 1001 aigc
+
+# 复制项目文件
+COPY build_assets/ /app/
 RUN chown -R aigc:aigc /app
+WORKDIR /app
 
 # 切换到 aigc 用户
 USER aigc
-WORKDIR /app
 
 # 设置Python用户安装路径到PATH
-ENV PATH="/home/aigc/.local/bin:$PATH"
+ENV PATH="/home/aigc/.local/bin:/opt/ffmpeg/bin:$PATH"
 
 # 需要先手动下载一下 flash-attn， wget  https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
