@@ -15,7 +15,7 @@ RUN apt update && apt install -y \
     pkg-config texinfo wget yasm nasm zlib1g-dev \
     libx264-dev libx265-dev libnuma-dev libvpx-dev \
     libfdk-aac-dev libmp3lame-dev libopus-dev \
-    libaom-dev \
+    libaom-dev meson ninja-build \
     nvidia-cuda-toolkit
 
 WORKDIR /tmp
@@ -26,6 +26,15 @@ RUN git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
     make install && \
     ldconfig && \
     cd / && rm -rf /tmp/SVT-AV1
+
+WORKDIR /tmp
+RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
+    cd dav1d && \
+    meson setup build --buildtype release --prefix=/usr/local && \
+    meson compile -C build && \
+    meson install -C build && \
+    ldconfig && \
+    cd / && rm -rf /tmp/dav1d
 
 # 复制项目文件
 COPY build_assets/ /app/
@@ -55,7 +64,7 @@ RUN ./configure \
     --enable-cuda \
     --enable-nvenc \
     --enable-libnpp \
-    --enable-libdav1d   # AV1 解码更快 \
+    --enable-libdav1d \ # AV1 解码更快
     --enable-libwebp \
     --enable-openssl \
     --enable-shared \
