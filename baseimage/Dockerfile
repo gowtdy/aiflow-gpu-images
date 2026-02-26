@@ -35,6 +35,8 @@ RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
     meson compile -C build && \
     meson install -C build && \
     ldconfig && \
+    find /usr/local -name "libdav1d.so*" -type f && \
+    ls -la /usr/local/lib/libdav1d.so* && \
     cd / && rm -rf /tmp/dav1d
 
 # 安装 ffnvcodec（NVIDIA FFmpeg 编解码器头文件）
@@ -144,7 +146,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
 # 复制从源码编译的库（dav1d）
-COPY --from=builder /usr/local/lib/libdav1d.so* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libdav1d.so* /usr/local/lib/ || true
 RUN ldconfig
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
@@ -157,12 +159,14 @@ COPY build_assets/ /app/
 RUN chown -R aigc:aigc /app
 WORKDIR /app
 
-# 切换到 aigc 用户
-USER aigc
-
 # 设置Python用户安装路径到PATH
 ENV PATH="/home/aigc/.local/bin:/opt/ffmpeg/bin:$PATH"
 ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+
+# 切换到 aigc 用户
+USER aigc
+
+
 
 # 需要先手动下载一下 flash-attn， wget  https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
