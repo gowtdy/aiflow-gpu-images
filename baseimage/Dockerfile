@@ -18,16 +18,13 @@ RUN apt update && apt install -y \
     libaom-dev libsvtav1-dev \
     nvidia-cuda-toolkit
 
-# 创建用户 aigc，指定UID和GID为1001以匹配宿主机
-# 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
-# id aigc可以查看账号的id
-RUN groupadd -g 1001 aigc && useradd -m -s /bin/bash -u 1001 -g 1001 aigc
-
 # 复制项目文件
 COPY build_assets/ /app/
 
+RUN pkg-config --modversion SvtAv1Enc
+
 WORKDIR /app
-Run tar xvf ffmpeg-8.0.1.tar.xz
+RUN tar xvf ffmpeg-8.0.1.tar.xz
 WORKDIR /app/ffmpeg-8.0.1
 RUN ./configure \
     --prefix=/opt/ffmpeg \
@@ -49,6 +46,9 @@ RUN ./configure \
     --enable-cuda \
     --enable-nvenc \
     --enable-libnpp \
+    --enable-libdav1d   # AV1 解码更快 \
+    --enable-libwebp \
+    --enable-openssl \
     --enable-shared \
     --disable-debug \
     --disable-doc
@@ -61,6 +61,9 @@ FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
 
+# 创建用户 aigc，指定UID和GID为1001以匹配宿主机
+# 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
+# id aigc可以查看账号的id
 RUN groupadd -g 1001 aigc && useradd -m -s /bin/bash -u 1001 -g 1001 aigc
 
 # 复制项目文件
