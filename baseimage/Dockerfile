@@ -112,7 +112,6 @@ RUN apt-get update && apt-get install -y \
     libxv1 \
     # 音频库
     libasound2 \
-    libsndio7 \
     # 视频加速相关
     libva2 \
     libva-drm2 \
