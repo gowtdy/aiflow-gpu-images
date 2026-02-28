@@ -97,6 +97,8 @@ RUN if [ -f /usr/local/lib/libdav1d.so.7 ]; then \
 #--------- runtime image ---------
 FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # 安装 ffmpeg 运行时依赖
 RUN apt-get update && apt-get install -y \
     # libdrm 相关
@@ -154,6 +156,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
+
+RUN apt-get update && apt-get install -y software-properties-common telnet net-tools vim rsync openssh-client git 
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
 # 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
