@@ -38,11 +38,8 @@ RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
     cd / && rm -rf /tmp/dav1d
 
 # 安装 ffnvcodec（NVIDIA FFmpeg 编解码器头文件）
-WORKDIR /tmp
-RUN git clone --depth 1 https://github.com/FFmpeg/nv-codec-headers.git && \
-    cd nv-codec-headers && \
-    make install && \
-    cd / && rm -rf /tmp/nv-codec-headers
+WORKDIR /app
+RUN cd nv-codec-headers && make install && cd ..
 
 # 复制项目文件
 COPY build_assets/ /app/
