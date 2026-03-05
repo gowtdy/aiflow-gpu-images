@@ -39,7 +39,7 @@ RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
 
 # 安装 ffnvcodec（NVIDIA FFmpeg 编解码器头文件）
 WORKDIR /tmp
-RUN git clone --depth 1 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git && \
+RUN git clone --depth 1 https://github.com/FFmpeg/nv-codec-headers.git && \
     cd nv-codec-headers && \
     make install && \
     cd / && rm -rf /tmp/nv-codec-headers
