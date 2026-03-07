@@ -38,11 +38,9 @@ RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
     cd / && rm -rf /tmp/dav1d
 
 # 安装 ffnvcodec（NVIDIA FFmpeg 编解码器头文件）
-WORKDIR /tmp
-RUN git clone --depth 1 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git && \
-    cd nv-codec-headers && \
-    make install && \
-    cd / && rm -rf /tmp/nv-codec-headers
+COPY build_assets/nv-codec-headers/ /app/nv-codec-headers/
+WORKDIR /app/nv-codec-headers
+RUN make install
 
 # 复制项目文件
 COPY build_assets/ /app/
@@ -157,32 +155,25 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
 
-RUN apt-get update && apt-get install -y software-properties-common telnet net-tools vim rsync openssh-client git 
+RUN apt-get update && apt-get install -y software-properties-common telnet net-tools vim rsync openssh-client git gosu 
 
-# 创建用户 aigc，指定UID和GID为1001以匹配宿主机
-# 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
-# id aigc可以查看账号的id
-RUN groupadd -g 1001 aigc && useradd -m -s /bin/bash -u 1001 -g 1001 aigc
+# aigc user created at runtime by entrypoint (AIGC_UID/AIGC_GID)
 
 # 复制项目文件
 COPY build_assets/ /app/
-RUN chown -R aigc:aigc /app
+COPY build_assets/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 WORKDIR /app
 
-# 设置Python用户安装路径到PATH
-ENV PATH="/home/aigc/.local/bin:/opt/ffmpeg/bin:$PATH"
+# 设置PATH（Python 套件以 root 安装到系统路径，不依赖 /home/aigc/.local）
+ENV PATH="/opt/ffmpeg/bin:$PATH"
 ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/usr/local/lib:$LD_LIBRARY_PATH"
 
-# 切换到 aigc 用户
-USER aigc
-
-# 需要先手动下载一下 flash-attn， wget  https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
-
+# 以 root 安装 Python 套件到系统路径，供 entrypoint 切换为 aigc 后使用
 RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
   && python3 -m pip install flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl \
   && python3 -m pip install -r /app/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-  && alias ll="ls -lh"
-
 
 #ENTRYPOINT ["python"]
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["tail", "-f", "/dev/null"]
