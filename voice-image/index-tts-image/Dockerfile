@@ -13,12 +13,12 @@ COPY build_assets/ /app/
 RUN mkdir -p /app/index-tts/checkpoints /app/index-tts/models
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
-RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple 
+RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
 
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-RUN pip install --progress-bar=raw -v -r requirements.txt
+RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 给脚本执行权限
 RUN chmod +x /app/start_index-tts.sh
