@@ -22,5 +22,5 @@ RUN pip install -r requirements.txt
 # 给脚本执行权限
 RUN chmod +x /app/start_index-tts.sh
 # 使用 base 的 ENTRYPOINT ["/entrypoint.sh"]，僅設 CMD；tts-worker 會覆蓋 CMD
-#CMD ["tail", "-f", "/dev/null"]
-CMD ["./start_index-tts.sh"]
+#CMD ["./start_index-tts.sh"]
+CMD ["tail", "-f", "/dev/null"]
