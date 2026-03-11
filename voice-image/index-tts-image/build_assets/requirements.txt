@@ -30,5 +30,5 @@ deepspeed==0.17.1
 
 # clone时需要
 rotary-embedding-torch==0.8.9
-onnxruntime-gpu==1.21.1
+onnxruntime-gpu==1.21.1 
 Faster_Whisper==1.2.1
