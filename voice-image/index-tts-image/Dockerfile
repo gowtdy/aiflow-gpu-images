@@ -18,7 +18,7 @@ RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/si
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-RUN pip install --progress-bar on -v -r requirements.txt
+RUN pip install --progress-bar=raw -v -r requirements.txt
 
 # 给脚本执行权限
 RUN chmod +x /app/start_index-tts.sh
