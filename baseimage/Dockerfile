@@ -1,5 +1,4 @@
-#FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel AS builder
-FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel AS builder
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -94,8 +93,7 @@ RUN if [ -f /usr/local/lib/libdav1d.so.7 ]; then \
     fi
 
 #--------- runtime image ---------
-#FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
-FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
 
 ENV DEBIAN_FRONTEND=noninteractive
 
