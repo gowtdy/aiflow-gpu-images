@@ -1,4 +1,4 @@
-FROM aiflowbase:0.5
+FROM aiflowbase:0.4
 
 #ENV DEBIAN_FRONTEND=noninteractive
 
