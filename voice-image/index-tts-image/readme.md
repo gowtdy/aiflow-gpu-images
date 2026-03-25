@@ -1,0 +1,1 @@
+GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/index-tts/index-tts.git
