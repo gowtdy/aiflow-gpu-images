@@ -174,6 +174,9 @@ RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/si
   #&& python3 -m pip install flash_attn-2.7.4.post1+cu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl \
   && python3 -m pip install -r /app/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+WORKDIR /app/flash-attention-v100
+RUN rm -rf ./build && python3 setup.py install
+
 #ENTRYPOINT ["python"]
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["tail", "-f", "/dev/null"]
