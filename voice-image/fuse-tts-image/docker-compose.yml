@@ -1,0 +1,37 @@
+services:
+  ttsbaseimage:
+    image: ttsbaseimage:5
+    hostname: ttsbaseimage
+    container_name: ttsbaseimage
+    user: "aigc:aigc"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    #ports:
+    #  - "5000:5000"
+    #  - "5100:5100"
+    #  - "5200:5200"
+    #  - "5300:5300"
+    #  - "5400:5400"
+    #  - "5500:5500"
+    #  - "5600:5600"
+    #  - "5700:5700"
+    #  - "5800:5800"
+    #  - "5900:5900"
+ #   environment:
+ #     - APP_PORT=6000
+    volumes:
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/GPT-SoVITS/chinese-hubert-base:/app/models/pretrained_models/chinese-hubert-base
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/GPT-SoVITS/chinese-roberta-wwm-ext-large:/app/models/pretrained_models/chinese-roberta-wwm-ext-large
+      - /home/aigc/work/models/aivoice_models/fish_models:/app/models/fish_models
+      - /home/aigc/work/models/aivoice_models/cloned_models/common_models:/app/models/service_model/common_models
+      - /home/aigc/nltk_data:/root/nltk_data
+      - /home/aigc/data/aioutput/logs:/app/log
+      - /home/aigc/data/aioutput/sounds/tk:/app/output
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    #tty: true
