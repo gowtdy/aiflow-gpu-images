@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 安装系统依赖（以 root 用户执行）
 RUN apt-get update && apt-get install -y software-properties-common telnet net-tools\
     && apt-get update \
-    && apt-get install -y wget vim rsync openssh-client git
+    && apt-get install -y wget vim rsync openssh-client git tzdata
 
 # 创建用户 aigc，指定UID和GID为1001以匹配宿主机
 # 宿主机的账号 aigc的id为 1001 调整为一致， 确保 aigc 用户有正确的 UID/GID (1001:1001)，这样文件所有者会显示为用户名而不是数字
