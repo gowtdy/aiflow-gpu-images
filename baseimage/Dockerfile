@@ -155,7 +155,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /opt/ffmpeg /opt/ffmpeg
 
-RUN apt-get update && apt-get install -y software-properties-common telnet net-tools vim rsync openssh-client git gosu 
+RUN apt-get update && apt-get install -y software-properties-common telnet net-tools vim rsync openssh-client git gosu tzdata
 
 # aigc user created at runtime by entrypoint (AIGC_UID/AIGC_GID)
 
