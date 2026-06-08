@@ -1,4 +1,4 @@
-FROM docker.1ms.run/pytorch/pytorch:2.11.0-cuda12.8-cudnn9-devel AS builder
+FROM pytorch/pytorch:2.11.0-cuda12.8-cudnn9-devel AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -93,7 +93,7 @@ RUN if [ -f /usr/local/lib/libdav1d.so.7 ]; then \
     fi
 
 #--------- runtime image ---------
-FROM docker.1ms.run/pytorch/pytorch:2.11.0-cuda12.8-cudnn9-devel
+FROM pytorch/pytorch:2.11.0-cuda12.8-cudnn9-devel
 
 ENV DEBIAN_FRONTEND=noninteractive
 
