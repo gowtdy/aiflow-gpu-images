@@ -1,0 +1,38 @@
+services:
+  coverimage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
+    image: coverimage:0.1
+    hostname: coverimage
+    container_name: coverimage
+    user: "aigc:aigc"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/VoiceConversionWebUI/rmvpe.pt:/app/assets/rmvpe/rmvpe.pt
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/VoiceConversionWebUI/hubert_base.pt:/app/assets/hubert/hubert_base.pt
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/uvr5_weights:/app/assets/uvr5_weights
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/VoiceConversionWebUI/pretrained_v2:/app/assets/pretrained_v2
+      - /home/aigc/work/models/aivoice_models/gptsovits_model/VoiceConversionWebUI/pretrained:/app/assets/pretrained
+      - /home/aigc/work/models/aivoice_models/cloned_covermodels/rvc_models:/app/models/service_models
+      - /home/aigc/work/models/aivoice_models/cloned_models/common_models:/app/models/service_model/common_models
+      - /home/aigc/data/userupload/aivoicelab:/app/data/uploads
+      - /home/aigc/data/aioutput/cover/aivoicelab/middle:/app/data/middle
+      - /home/aigc/data/aioutput/cover/aivoicelab/final:/app/data/final
+      - /home/aigc/data/aioutput/cover/commshare/final/sepaudio:/app/data/sepaudio
+      - /home/aigc/data/aioutput/cover/commshare/final/sepvocal:/app/data/sepvocal
+      - /home/aigc/data/aioutput/cover/commshare/final/sepinstrum:/app/data/sepinstrum
+      - /home/aigc/data/remote_rsync_server:/app/data/remote_rsync_server
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    #tty: true
