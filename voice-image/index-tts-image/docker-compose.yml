@@ -1,6 +1,6 @@
 services:
   index-tts-server:
-    image: index-tts-image:0.1
+    image: index-tts-image:0.5
     hostname: index-tts-server
     container_name: index-tts-server
     restart: always
