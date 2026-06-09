@@ -27,14 +27,12 @@ RUN cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=
     ldconfig && \
     cd / && rm -rf /tmp/SVT-AV1
 
-WORKDIR /tmp
-RUN git clone --depth 1 https://code.videolan.org/videolan/dav1d.git && \
-    cd dav1d && \
-    meson setup build --buildtype release --prefix=/usr/local --libdir=lib && \
+COPY build_assets/dav1d/ /app/dav1d/
+WORKDIR /app/dav1d
+RUN meson setup build --buildtype release --prefix=/usr/local --libdir=lib && \
     meson compile -C build && \
     meson install -C build && \
-    ldconfig && \
-    cd / && rm -rf /tmp/dav1d
+    ldconfig
 
 # 安装 ffnvcodec（NVIDIA FFmpeg 编解码器头文件）
 COPY build_assets/nv-codec-headers/ /app/nv-codec-headers/
