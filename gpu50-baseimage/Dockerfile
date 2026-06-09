@@ -21,7 +21,7 @@ RUN apt update && apt install -y \
 
 COPY build_assets/SVT-AV1/ /app/SVT-AV1/
 WORKDIR /app/SVT-AV1/Build
-RUN cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
+RUN cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && \
     make -j$(nproc) && \
     make install && \
     ldconfig
