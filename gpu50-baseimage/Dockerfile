@@ -20,12 +20,11 @@ RUN apt update && apt install -y \
     nvidia-cuda-toolkit
 
 COPY build_assets/SVT-AV1/ /app/SVT-AV1/
-WORKDIR /app/SVT-AV1
+WORKDIR /app/SVT-AV1/Build
 RUN cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && \
     make install && \
-    ldconfig && \
-    cd / && rm -rf /tmp/SVT-AV1
+    ldconfig
 
 COPY build_assets/dav1d/ /app/dav1d/
 WORKDIR /app/dav1d
