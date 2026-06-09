@@ -19,10 +19,9 @@ RUN apt update && apt install -y \
     meson ninja-build \
     nvidia-cuda-toolkit
 
-WORKDIR /tmp
-RUN git clone --depth 1 --branch v2.3.0 https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
-    cd SVT-AV1/Build && \
-    cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
+COPY build_assets/SVT-AV1/ /app/SVT-AV1/
+WORKDIR /app/SVT-AV1
+RUN cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && \
     make install && \
     ldconfig && \
