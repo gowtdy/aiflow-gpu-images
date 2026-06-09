@@ -122,17 +122,17 @@ RUN apt-get update && apt-get install -y \
     libxcb-glx0 \
     # X11 Video 扩展
     libxv1 \
-    # 音频库
-    libasound2 \
+    # 音频库（Ubuntu 24.04: libasound2 为虚拟包，需用 libasound2t64）
+    libasound2t64 \
     # 视频加速相关
     libva2 \
     libva-drm2 \
     libva-x11-2 \
     libvdpau1 \
-    # 编解码器运行时库（根据 ldd 输出确定版本）
-    libx264-163 \
+    # 编解码器运行时库（Ubuntu 24.04 版本号）
+    libx264-164 \
     libx265-199 \
-    libvpx7 \
+    libvpx9 \
     libfdk-aac2 \
     libmp3lame0 \
     libopus0 \
