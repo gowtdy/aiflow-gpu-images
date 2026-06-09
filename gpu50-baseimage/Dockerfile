@@ -169,7 +169,7 @@ ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/usr/local/lib:$LD_LIBRARY_PATH"
 # Ubuntu 24.04 (PEP 668) 默认禁止系统级 pip，容器内显式允许
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
-  && python3 -m pip install flash_attn-2.8.3+cu128torch2.9-cp314-cp314t-linux_aarch64.whl \
+  && python3 -m pip install flash_attn-2.6.3+cu128torch2.11-cp312-cp312-linux_aarch64.whl \
   && python3 -m pip install -r /app/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 #ENTRYPOINT ["python"]
