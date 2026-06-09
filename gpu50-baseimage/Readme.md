@@ -1,4 +1,4 @@
-注意：build前需要单独下载 flash_attn-2.6.3+cu128torch2.11-cp312-cp312-linux_x86_64.whl 文件放在 build_assets 目录。
+注意：build前需要单独下载 flash_attn-2.8.3+cu128torch2.11-cp312-cp312-linux_x86_64.whl 文件放在 build_assets 目录。
 
 ## 運行時 UID/GID 對齊（可選）
 
