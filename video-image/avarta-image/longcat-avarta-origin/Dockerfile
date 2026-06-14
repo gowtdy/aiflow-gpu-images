@@ -10,7 +10,7 @@ USER root
 RUN rm -rf /app/*
 COPY build_assets/ /app/
 
-RUN mkdir -p /app/index-tts/checkpoints /app/index-tts/models
+RUN mkdir -p /app/weights/LongCat-Video-Avatar-1.5
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
@@ -19,9 +19,10 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --progress-bar=raw -v -r requirements_avatar.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 给脚本执行权限
-RUN chmod +x /app/start_index-tts.sh
+#RUN chmod +x /app/start_index-tts.sh
 # 使用 base 的 ENTRYPOINT ["/entrypoint.sh"]，僅設 CMD；tts-worker 會覆蓋 CMD
 #CMD ["./start_index-tts.sh"]
 CMD ["tail", "-f", "/dev/null"]
