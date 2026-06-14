@@ -5,6 +5,9 @@ FROM gpu50-baseimage:0.1
 USER root
 # 安装系统依赖
 # RUN apt-get update && apt-get install -y libavutil-dev libavcodec-dev libavformat-dev rsync openssh-client
+RUN apt-get update && apt-get install -y \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # 复制项目文件（chown 由 base entrypoint 在 run 時依 AIGC_UID/AIGC_GID 處理）
 RUN rm -rf /app/*
