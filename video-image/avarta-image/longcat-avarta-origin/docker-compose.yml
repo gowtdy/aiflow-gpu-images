@@ -21,11 +21,7 @@ services:
       - AIGC_GID=${AIGC_GID:-1001}
       - TZ=Asia/Shanghai
     volumes:
-      - /home/aigc/work/models/aivoice_models/indextts_models/IndexTTS-2:/app/index-tts/checkpoints
-      - /home/aigc/work/models/aivoice_models/indextts_models/w2v-bert-2.0:/app/index-tts/models/w2v-bert-2.0
-      - /home/aigc/work/models/aivoice_models/indextts_models/MaskGCT:/app/index-tts/models/MaskGCT
-      - /home/aigc/work/models/aivoice_models/indextts_models/campplus:/app/index-tts/models/campplus
-      - /home/aigc/work/models/aivoice_models/indextts_models/bigvgan_v2_22khz_80band_256x:/app/index-tts/models/bigvgan_v2_22khz_80band_256x
+      - /home/aigc/work/models/aivideo_models/LongCat-Video-Avatar-1.5:/app/weights/LongCat-Video-Avatar-1.5
     extra_hosts:
       - "host.docker.internal:host-gateway"
     #tty: true
