@@ -1,4 +1,4 @@
-torch==2.11.0
+# torch provided by gpu50-baseimage (pytorch/pytorch:2.11.0-cuda12.8)
 numpy==1.26.4
 transformers==4.41.0
 loguru==0.7.2
