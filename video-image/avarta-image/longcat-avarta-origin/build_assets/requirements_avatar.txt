@@ -12,7 +12,7 @@ tzdata==2025.2
 onnx==1.18.0
 #onnxruntime==1.16.3
 onnxruntime==1.21.1
-tritonserverclient
+#tritonserverclient==0.0.6
 openai==1.75.0
 numpy==1.26.4
 cffi==2.0.0
