@@ -21,8 +21,11 @@ RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simp
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
-RUN pip install --progress-bar=raw -v -r requirements_avatar.txt -i https://mirrors.aliyun.com/pypi/simple/
+# Lock torch to the CUDA build from gpu50-baseimage; stops transitive deps
+# (e.g. audio-separator) from re-downloading a PyPI manylinux wheel.
+RUN python3 -c "import torch; open('/tmp/constraints.txt', 'w').write(f'torch=={torch.__version__}\n')"
+RUN pip install --progress-bar=raw -v -r requirements.txt -c /tmp/constraints.txt -i https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --progress-bar=raw -v -r requirements_avatar.txt -c /tmp/constraints.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 给脚本执行权限
 #RUN chmod +x /app/start_index-tts.sh
