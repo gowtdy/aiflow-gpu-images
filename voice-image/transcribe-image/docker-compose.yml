@@ -3,14 +3,26 @@ services:
     image: transcribe-image:0.1
     hostname: transcribe-image
     container_name: transcribe-image
-    user: "aigc:aigc"
+    restart: unless-stopped
+    network_mode: host
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+      - 192.168.3.1
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              device_ids: ['2']
               capabilities: [gpu]
+    environment:
+      - AIGC_UID=${AIGC_UID:-1001}
+      - AIGC_GID=${AIGC_GID:-1001}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - NVIDIA_REQUIRE_CUDA=cuda>=12.0
+      - GPU_INDEX=0
+      - TZ=Asia/Shanghai
     volumes:
       - /home/aigc/work/models/aivoice_models/transcribe_models/whisper-large-v3-turbo:/app/models/whisper-large-v3-turbo
       - /home/aigc/data/aioutput/logs:/app/log
