@@ -1,0 +1,19 @@
+services:
+  transcribe-image:
+    image: transcribe-image:0.1
+    hostname: transcribe-image
+    container_name: transcribe-image
+    user: "aigc:aigc"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - /home/aigc/work/models/aivoice_models/transcribe_models/whisper-large-v3-turbo:/app/models/whisper-large-v3-turbo
+      - /home/aigc/data/aioutput/logs:/app/log
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    #tty: true
