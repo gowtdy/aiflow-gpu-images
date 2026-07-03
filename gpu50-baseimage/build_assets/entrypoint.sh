@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-# Runtime alignment: create aigc user with host UID/GID (default 1001)
 AIGC_UID=${AIGC_UID:-1001}
 AIGC_GID=${AIGC_GID:-1001}
-
-# Create group and user if they do not exist (ignore errors if ID already in use)
+# 尝试创建 aigc；失败也不影响后续（UID 可能已被 ubuntu 等占用）
 getent group aigc >/dev/null 2>&1 || groupadd -g "$AIGC_GID" aigc 2>/dev/null || true
 getent passwd aigc >/dev/null 2>&1 || useradd -m -s /bin/bash -u "$AIGC_UID" -g "$AIGC_GID" aigc 2>/dev/null || true
-
-# Ensure /app and aigc home are owned by aigc (by name, so correct regardless of UID)
-chown -R aigc:aigc /app
-[ -d /home/aigc ] && chown -R aigc:aigc /home/aigc
-
-exec gosu aigc "$@"
+# 用数字 UID/GID chown，ubuntu(1000) 和 aigc(1000) 效果相同
+chown -R "$AIGC_UID":"$AIGC_GID" /app
+[ -d /home/aigc ] && chown -R "$AIGC_UID":"$AIGC_GID" /home/aigc
+# gosu 也支持数字 UID
+exec gosu "$AIGC_UID" "$@"
