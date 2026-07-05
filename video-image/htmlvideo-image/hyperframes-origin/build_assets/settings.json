@@ -1,0 +1,11 @@
+{
+    "env": {
+        "ANTHROPIC_AUTH_TOKEN": "ark-a669c297-6313-4cfb-a1e5-d2a44f7828f5-71c37",
+        "ANTHROPIC_BASE_URL": "https://ark.cn-beijing.volces.com/api/coding",
+        "ANTHROPIC_MODEL": "deepseek-v4-pro",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-pro",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro",
+        "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-pro"
+    }
+}
