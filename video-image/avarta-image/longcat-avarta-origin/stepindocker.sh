@@ -1,0 +1,1 @@
+docker exec -it longcat-avarta-origin-server bash
