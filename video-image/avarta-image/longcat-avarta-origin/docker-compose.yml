@@ -22,6 +22,7 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       - /home/aigc/work/models/aivideo_models/LongCat-Video-Avatar-1.5:/app/weights/LongCat-Video-Avatar-1.5
+      - /home/aigc/work/models/aivideo_models/LongCat-Video:/app/weights/LongCat-Video
     extra_hosts:
       - "host.docker.internal:host-gateway"
     #tty: true
