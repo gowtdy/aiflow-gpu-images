@@ -18,6 +18,7 @@ RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simp
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
+RUN pip uninstall -y dctorch
 RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 给脚本执行权限
