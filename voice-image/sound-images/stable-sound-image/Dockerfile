@@ -1,4 +1,4 @@
-FROM gpu50-baseimage:0.1
+FROM gpu50-baseimage:0.2
 
 #ENV DEBIAN_FRONTEND=noninteractive
 
@@ -18,7 +18,6 @@ RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simp
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
-RUN pip uninstall -y dctorch k-diffusion
 RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 给脚本执行权限
