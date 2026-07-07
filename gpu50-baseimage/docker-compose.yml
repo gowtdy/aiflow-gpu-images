@@ -1,6 +1,6 @@
 services:
   webserver:
-    image: gpu50-baseimage:0.1
+    image: gpu50-baseimage:0.2
     #image: tkaudio:0.1
     #image: pytorch/pytorch:2.4.1-cuda12.1-cudnn9-devel
     hostname: gpu50-baseimage
