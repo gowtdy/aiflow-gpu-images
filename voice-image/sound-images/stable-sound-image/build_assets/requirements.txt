@@ -9,6 +9,7 @@ huggingface-hub==1.7.1
 transformers==5.8.0
 soundfile==0.13.1
 accelerate==1.13.0
+fasttext-numpy2>=0.10.4
 
 # SQL & web
 sqlalchemy==2.0.40
