@@ -1,4 +1,4 @@
-FROM gpu50-baseimage:0.1
+FROM gpu50-baseimage:0.2
 
 #ENV DEBIAN_FRONTEND=noninteractive
 
@@ -18,11 +18,6 @@ RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
 # 复制项目文件（chown 由 base entrypoint 在 run 時依 AIGC_UID/AIGC_GID 處理）
 RUN rm -rf /app/*
 COPY build_assets/ /app/
-
-RUN mkdir -p ~/claude/
-
-COPY build_assets/claude.json ~/.claude.json
-COPY build_assets/settings.json ~/.claude/
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
