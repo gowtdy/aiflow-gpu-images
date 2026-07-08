@@ -1,0 +1,46 @@
+# stable sound
+einops==0.8.2
+einops_exts==0.0.4
+numpy==2.2.6
+packaging==26.0
+safetensors==0.7.0
+tqdm==4.67.3
+huggingface-hub==1.7.1
+transformers==5.8.0
+accelerate==1.13.0
+fasttext-numpy2>=0.10.4
+
+# Audio processing
+torchcodec==0.11.1
+torchaudio==2.11.0
+librosa==0.11.0
+audioread==3.0.1
+soundfile==0.13.1
+pydub==0.25.1
+pyloudnorm==0.1.1
+soxr==0.5.0.post1
+julius==0.2.7
+torch-stoi==0.2.3
+pystoi==0.4.1
+descript-audiotools==0.7.2
+descript-audio-codec==1.0.0
+
+# SQL & web
+sqlalchemy==2.0.40
+pymysql==1.1.1
+uvicorn==0.34.2
+fastapi  # add version if needed
+h11==0.14.0
+httpcore==1.0.8
+httpx==0.28.1
+
+# Safety & crypto
+cryptography==44.0.2
+
+# Task queue
+celery==5.5.1
+kombu==5.5.3
+amqp==5.1.1
+billiard==4.2.1
+vine==5.1.0
+setproctitle==1.3.5
