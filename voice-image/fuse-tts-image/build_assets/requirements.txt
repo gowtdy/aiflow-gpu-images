@@ -1,5 +1,4 @@
 # Core Python packages
-numpy==1.26.4
 scipy==1.15.2
 python-dateutil==2.9.0.post0
 future==1.0.0
