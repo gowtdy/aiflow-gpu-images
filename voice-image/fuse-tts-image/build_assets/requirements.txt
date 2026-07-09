@@ -34,6 +34,7 @@ opencc==1.1.9
 python_mecab_ko
 ko_pron
 pyjyutping
+cython==3.0.7
 WeTextProcessing==1.0.3
 LangSegment>=0.2.0
 
@@ -115,7 +116,6 @@ descript-audiotools==0.7.2
 descript-audio-codec==1.0.0
 
 # index-tts2 独有
-cython==3.0.7
 einops>=0.8.1
 g2p-en==2.1.0
 json5==0.10.0
