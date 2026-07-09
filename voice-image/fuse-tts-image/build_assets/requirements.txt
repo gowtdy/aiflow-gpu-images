@@ -76,6 +76,8 @@ httpx==0.28.1
 # 🔧 工具 & 运维
 PyYAML
 psutil
+ffmpeg-python
+ffmpy
 fire==0.7.0
 loguru==0.7.3
 sentry-sdk==2.26.1
