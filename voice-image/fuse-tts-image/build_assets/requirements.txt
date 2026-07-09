@@ -1,4 +1,4 @@
-# Core Python packages
+# ✅ 基础计算 & 科学库
 scipy==1.15.2
 python-dateutil==2.9.0.post0
 future==1.0.0
@@ -6,35 +6,38 @@ regex==2024.11.6
 pooch==1.8.2
 flatten-dict==0.4.2
 randomname==0.2.1
-k_diffusion==0.1.1.post1
-alias_free_torch==0.0.6
-vector_quantize_pytorch==1.22.15
-python-multipart==0.0.20
+
+# 🔬 PyTorch & 训练相关
 pytorch_lightning==2.5.1
-nltk==3.9.1
-langdetect==1.0.9
-pypinyin==0.54.0
-onnxruntime==1.21.1
-opencc==1.1.9
-hydra-core==1.3.2
-tiktoken==0.9.0
+lightning==2.5.1.post0
+tqdm>=4.67.1
+transformers==4.51.3
+sentencepiece>=0.2.1
+accelerate==1.8.1
+vector_quantize_pytorch==1.22.15
 loralib==0.1.2
-wordsegment==1.3.1
-g2p_en==2.1.0
-g2pk2==0.0.3
-WeTextProcessing==1.2.0
+onnxruntime-gpu==1.21.1
 
 # 🧠 语言处理 & 分词
+pypinyin==0.54.0
 cn2an==0.5.22
+g2p_en==2.1.0
+g2pk2==0.0.3
+langdetect==1.0.9
 jieba_fast
+jieba==0.42.1
+wordsegment==1.3.1
 pyopenjtalk>=0.4.1
+opencc==1.1.9
 python_mecab_ko
 ko_pron
 pyjyutping
+WeTextProcessing==1.2.0
+LangSegment>=0.2.0
 
-# Audio processing
+# 🔉 音频处理
 librosa==0.11.0
-audioread==3.0.1
+audioread
 soundfile==0.13.1
 pydub==0.25.1
 pyloudnorm==0.1.1
@@ -42,102 +45,87 @@ soxr==0.5.0.post1
 julius==0.2.7
 torch-stoi==0.2.3
 pystoi==0.4.1
-descript-audiotools==0.7.2
-descript-audio-codec==1.0.0
+moviepy
 
-# ML/DL & Torch ecosystem
-transformers==4.51.3
-accelerate==1.6.0
-einops_exts==0.0.4
-einx==0.3.0
+# 🎥 视觉、扩散模型、多模态
+diffusers==0.27.2
+modelscope==1.27.0
+conformer==0.3.2
+clean-fid==0.1.35
 kornia==0.8.0
-kornia_rs==0.1.8
 x_transformers==2.2.12
 clip-anytorch==2.6.0
-#flash-attn==2.7.0.post2
-#flash-attn
-dctorch==0.1.2
-torchdiffeq==0.2.5
-torchsde==0.2.6
 
-# Visualization & logging
+# 📊 可视化 & 日志记录
+tensorboard==2.9.1
 matplotlib==3.10.1
-scikit-image==0.25.2
-tensorboard==2.19.0
-tensorboard-data-server==0.7.2
 wandb==0.19.10
-ftfy==6.3.1
-markdown==3.8
-markdown2==2.5.3
 rich==14.0.0
+markdown
+markdown2
 
-# Task queue
+# 🌐 API、前端、Gradio/接口
+gradio==5.45.0
+fastapi
+uvicorn==0.34.2
+python-multipart==0.0.20
+httpx==0.28.1
+
+# 🔧 工具 & 运维
+PyYAML
+psutil
+fire==0.7.0
+loguru==0.7.3
+sentry-sdk==2.26.1
+docker-pycreds==0.4.0
+gitpython==3.1.44
+gdown==5.1.0
+wget==3.2
+ffmpeg-python==0.2.0
+ffmpy==0.5.0
+setproctitle==1.3.5
+nvidia-ml-py3
+
+# 🧪 开发与性能工具
+numba==0.61.2
+llvmlite==0.44.0
+joblib==1.4.2
+threadpoolctl==3.6.0
+tiktoken==0.9.0
+hydra-core==1.3.2
+
+# 🧵 Celery 任务队列（可选）
 celery==5.5.1
 kombu==5.5.3
 amqp==5.1.1
 billiard==4.2.1
 vine==5.1.0
-setproctitle==1.3.5
 
-# SQL & web
-sqlalchemy==2.0.40
-pymysql==1.1.1
-uvicorn==0.34.2
-fastapi  # add version if needed
-h11==0.14.0
-httpcore==1.0.8
-httpx==0.28.1
-
-# Dev / utility
-nvidia-ml-py3
-docker-pycreds==0.4.0
-gitpython==3.1.44
-fire==0.7.0
-loguru==0.7.3
-sentry-sdk==2.26.1
-msgpack==1.1.0
-fonttools==4.57.0
-termcolor==3.0.1
-llvmlite==0.44.0
-numba==0.61.2
-joblib==1.4.2
-threadpoolctl==3.6.0
-
-# Parsing / CLI tools
-click-plugins==1.1.1
-click-repl==0.3.0
-click-didyoumean==0.3.1
-docstring-parser==0.16
-argbind==0.3.9
-
-# Markdown & docs
-markdown-it-py==3.0.0
-mdurl==0.1.2
-
-# FFMPEG tools
-ffmpeg-python
-
-# Timezones
-tzdata==2025.2
-
-# Safety & crypto
+# 🔒 安全与加密（可选）
 cryptography==44.0.2
 safetensors==0.5.3
 
-# Git internals
-gitdb==4.0.12
-smmap==5.0.2
+# 🛠️ 可选依赖 / 附加库
+funasr==1.0.27
+Faster_Whisper==1.2.1
+alias_free_torch==0.0.6
+dctorch==0.1.2
+torchdiffeq==0.2.5
+torchsde==0.2.6
+descript-audiotools==0.7.2
+descript-audio-codec==1.0.0
 
-# Optional visualization
-contourpy==1.3.2
-cycler==0.12.1
-kiwisolver==1.4.8
-tifffile==2025.3.30
-lazy-loader==0.4
-
-# Clean image fidelity (e.g., FID calculation)
-clean-fid==0.1.35
-
-# Optional extra
-trampoline==0.1.2
-absl-py==2.2.2
+# index-tts2 独有
+cython==3.0.7
+einops>=0.8.1
+g2p-en==2.1.0
+json5==0.10.0
+keras==2.9.0
+munch==4.0.0
+omegaconf>=2.3.0
+opencv-python==4.9.0.80
+pandas==2.3.2
+textstat>=0.7.10
+tokenizers==0.21.0
+deepspeed==0.17.1
+rotary-embedding-torch==0.8.9
