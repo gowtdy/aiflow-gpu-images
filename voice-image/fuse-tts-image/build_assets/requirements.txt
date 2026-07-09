@@ -35,7 +35,7 @@ python_mecab_ko
 ko_pron
 pyjyutping
 cython==3.0.7
-WeTextProcessing==1.0.3
+WeTextProcessing==1.2.0
 LangSegment>=0.2.0
 
 # 🔉 音频处理
