@@ -16,6 +16,7 @@ ENV PYTHONUNBUFFERED=1
 RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
     && python3 -m pip install -r /app/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
     && python3 -m pip install /app/LangSegment-0.3.5-py3-none-any.whl -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    && python3 -m pip install 'numpy==1.26.4' --force-reinstall --no-deps \
     && rm -f /app/LangSegment-0.3.5-py3-none-any.whl
 
 #RUN python3 -m pip install --use-pep517 flash-attn -i https://pypi.tuna.tsinghua.edu.cn/simple
