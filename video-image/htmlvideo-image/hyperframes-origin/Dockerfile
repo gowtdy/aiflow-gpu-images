@@ -24,6 +24,13 @@ RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simp
 
 WORKDIR /app
 
+# 安装 HyperFrames agent skills（Claude Code 从 /app/.claude/skills/ 加载）
+RUN npx --yes skills add heygen-com/hyperframes \
+    --full-depth \
+    --yes \
+    --all \
+    --copy
+
 ENV PYTHONUNBUFFERED=1
 #RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
