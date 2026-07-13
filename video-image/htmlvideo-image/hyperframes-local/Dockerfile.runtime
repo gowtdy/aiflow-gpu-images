@@ -40,10 +40,8 @@ RUN node -e "\
     && ONNXRUNTIME_NODE_INSTALL=skip npm install --omit=dev \
     && mv ../../package.json.bak ../../package.json
 
-COPY --from=hf-builder /app/hyperframes/node_modules/onnxruntime-node \
+COPY --from=hf-builder /opt/hf-export/onnxruntime-node \
      /app/hyperframes/packages/cli/node_modules/onnxruntime-node
-COPY --from=hf-builder /app/hyperframes/node_modules/onnxruntime-common \
-     /app/hyperframes/packages/cli/node_modules/onnxruntime-common
 
 RUN npm install -g . && hyperframes --version
 
