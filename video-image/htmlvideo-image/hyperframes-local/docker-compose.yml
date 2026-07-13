@@ -1,8 +1,8 @@
 services:
-  hyperframes-origin-server:
-    image: hyperframes-origin-image:0.1
-    hostname: hyperframes-origin-server
-    container_name: hyperframes-origin-server
+  hyperframes-local-server:
+    image: hyperframes-local-image:0.1
+    hostname: hyperframes-local-server
+    container_name: hyperframes-local-server
     restart: unless-stopped
     network_mode: host
     dns:
