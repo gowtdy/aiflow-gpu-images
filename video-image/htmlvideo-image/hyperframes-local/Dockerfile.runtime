@@ -28,7 +28,9 @@ COPY --from=hf-builder /app/hyperframes/packages/cli/dist /app/hyperframes/packa
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
 
 WORKDIR /app/hyperframes/packages/cli
-RUN npm install -g . && hyperframes --version
+RUN npm install --omit=dev --no-workspaces \
+    && npm install -g . \
+    && hyperframes --version
 
 WORKDIR /app
 
