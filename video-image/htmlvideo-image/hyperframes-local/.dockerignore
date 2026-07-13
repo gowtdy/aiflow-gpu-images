@@ -1,0 +1,3 @@
+build_assets/hyperframes/node_modules
+build_assets/hyperframes/**/node_modules
+build_assets/hyperframes/.git
