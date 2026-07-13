@@ -48,13 +48,12 @@ RUN npm install -g . && hyperframes --version
 WORKDIR /app
 
 # 安装 HyperFrames agent skills（Claude Code 从 /app/.claude/skills/ 加载）
-RUN npx --yes skills add /app/hyperframes \
-    --all \
-    --yes \
-    --copy \
-    --agent claude-code \
-    && for d in /app/hyperframes/skills/_meta/*/; do \
-         [ -d "$d" ] && rm -rf "/app/.claude/skills/$(basename "$d")"; \
+# 直接拷贝本地 skills，避免 npx skills add 在容器构建时非零退出
+RUN mkdir -p /app/.claude/skills \
+    && for skill in /app/hyperframes/skills/*/; do \
+         name="$(basename "$skill")"; \
+         [ "$name" = "_meta" ] && continue; \
+         cp -a "$skill" "/app/.claude/skills/"; \
        done
 
 ENV PYTHONUNBUFFERED=1
