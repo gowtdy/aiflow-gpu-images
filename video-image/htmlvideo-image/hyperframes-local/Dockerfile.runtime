@@ -1,5 +1,7 @@
 # Runtime image (FROM gpu50-baseimage). Requires a pre-built builder image — see Dockerfile.builder.
 ARG BUILDER_IMAGE=hyperframes-builder:0.1
+FROM ${BUILDER_IMAGE} AS hf-builder
+
 FROM gpu50-baseimage:0.1
 
 #ENV DEBIAN_FRONTEND=noninteractive
@@ -18,10 +20,9 @@ RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
     && claude --version
 
 # 复制项目文件（chown 由 base entrypoint 在 run 時依 AIGC_UID/AIGC_GID 處理）
-ARG BUILDER_IMAGE
 RUN rm -rf /app/*
 COPY build_assets/ /app/
-COPY --from=${BUILDER_IMAGE} /app/hyperframes/packages/cli/dist /app/hyperframes/packages/cli/dist
+COPY --from=hf-builder /app/hyperframes/packages/cli/dist /app/hyperframes/packages/cli/dist
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
