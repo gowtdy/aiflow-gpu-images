@@ -29,6 +29,7 @@ RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simp
 
 WORKDIR /app/hyperframes/packages/cli
 # devDependencies 含 workspace:*，npm 无法解析；上层 monorepo 的 workspaces 也会干扰安装
+# onnxruntime-node postinstall 在部分网络下因 HTTP 302 失败，跳过并从 builder 拷贝原生二进制
 RUN node -e "\
   const fs = require('fs'); \
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); \
@@ -36,10 +37,15 @@ RUN node -e "\
   fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); \
 " \
     && mv ../../package.json ../../package.json.bak \
-    && npm install --omit=dev \
-    && mv ../../package.json.bak ../../package.json \
-    && npm install -g . \
-    && hyperframes --version
+    && ONNXRUNTIME_NODE_INSTALL=skip npm install --omit=dev \
+    && mv ../../package.json.bak ../../package.json
+
+COPY --from=hf-builder /app/hyperframes/node_modules/onnxruntime-node \
+     /app/hyperframes/packages/cli/node_modules/onnxruntime-node
+COPY --from=hf-builder /app/hyperframes/node_modules/onnxruntime-common \
+     /app/hyperframes/packages/cli/node_modules/onnxruntime-common
+
+RUN npm install -g . && hyperframes --version
 
 WORKDIR /app
 
