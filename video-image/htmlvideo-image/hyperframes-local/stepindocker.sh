@@ -1,1 +1,1 @@
-docker exec -it hyperframes-origin-server bash
+docker exec -it hyperframes-local-server bash
