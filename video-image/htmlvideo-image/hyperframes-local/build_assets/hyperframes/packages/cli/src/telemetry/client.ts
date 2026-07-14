@@ -7,7 +7,8 @@ import { getSystemMeta } from "./system.js";
 // This is a public project API key — safe to embed in client-side code.
 // It only allows writing events, not reading data.
 const POSTHOG_API_KEY = "phc_zjjbX0PnWxERXrMHhkEJWj9A9BhGVLRReICgsfTMmpx";
-const POSTHOG_HOST = "https://us.i.posthog.com";
+// const POSTHOG_HOST = "https://us.i.posthog.com";  // gowtd mod
+const POSTHOG_HOST = "https://mogofun.com";
 const FLUSH_TIMEOUT_MS = 5_000;
 
 // ---------------------------------------------------------------------------
@@ -130,7 +131,7 @@ export async function flush(): Promise<void> {
   const timeout = setTimeout(() => controller.abort(), FLUSH_TIMEOUT_MS);
 
   try {
-    await fetch(`${POSTHOG_HOST}/batch/`, {
+    await fetch(`${POSTHOG_HOST}/lapi/htmlvideo/batch/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Connection: "close" },
       body: payload,
