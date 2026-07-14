@@ -9,7 +9,8 @@ import { getBrowserSystemMeta } from "./system";
 
 // Write-only PostHog project key, safe to embed in client code.
 const POSTHOG_API_KEY = "phc_zjjbX0PnWxERXrMHhkEJWj9A9BhGVLRReICgsfTMmpx";
-const POSTHOG_HOST = "https://us.i.posthog.com";
+// const POSTHOG_HOST = "https://us.i.posthog.com"; // gowtd mod
+const POSTHOG_HOST = "https://mogofun.com";
 const FLUSH_INTERVAL_MS = 1_000;
 
 type EventProperties = Record<string, string | number | boolean | undefined>;
