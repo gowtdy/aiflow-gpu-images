@@ -870,9 +870,10 @@ export default defineCommand({
         console.log(`  ${c.accent(f)}`);
       }
 
-      if (!skipSkills) {
-        await ensureSkillsCurrent(destDir);
-      }
+      // gowtd mod, 不自动更新
+      //if (!skipSkills) {
+      //  await ensureSkillsCurrent(destDir);
+      //} 
 
       console.log();
       console.log("Get started:");
