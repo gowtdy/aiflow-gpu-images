@@ -213,28 +213,28 @@ if (!isHelp && command !== "telemetry" && command !== "events" && command !== "u
 
 // `events` skips the update check too — a skill-usage beacon must not add
 // network latency or trigger a background self-upgrade on the calling skill.
-if (!isHelp && !hasJsonFlag && command !== "upgrade" && command !== "events") {
-  // Report any completed auto-install from the previous run first, before
-  // kicking off the next check — so the user sees "updated to vX" once and
-  // we don't over-print.
-  import("./utils/autoUpdate.js").then((mod) => mod.reportCompletedUpdate()).catch(() => {});
-
-  import("./utils/updateCheck.js").then(async (mod) => {
-    _printUpdateNotice = mod.printUpdateNotice;
-    const result = await mod.checkForUpdate().catch(() => null);
-    if (result?.updateAvailable) {
-      const auto = await import("./utils/autoUpdate.js").catch(() => null);
-      auto?.scheduleBackgroundInstall(result.latest, result.current);
-    }
-  });
-
-  // Skills freshness nudge — same gating as the CLI self-update notice. The
-  // check is cached (24h) and best-effort: it never blocks or fails the command.
-  import("./utils/skillsUpdateCheck.js").then(async (mod) => {
-    _printSkillsUpdateNotice = mod.printSkillsUpdateNotice;
-    await mod.checkSkillsForUpdate().catch(() => null);
-  });
-}
+// if (!isHelp && !hasJsonFlag && command !== "upgrade" && command !== "events") {  // gowtd mod
+//   // Report any completed auto-install from the previous run first, before
+//   // kicking off the next check — so the user sees "updated to vX" once and
+//   // we don't over-print.
+//   import("./utils/autoUpdate.js").then((mod) => mod.reportCompletedUpdate()).catch(() => {});
+// 
+//   import("./utils/updateCheck.js").then(async (mod) => {
+//     _printUpdateNotice = mod.printUpdateNotice;
+//     const result = await mod.checkForUpdate().catch(() => null);
+//     if (result?.updateAvailable) {
+//       const auto = await import("./utils/autoUpdate.js").catch(() => null);
+//       auto?.scheduleBackgroundInstall(result.latest, result.current);
+//     }
+//   });
+// 
+//   // Skills freshness nudge — same gating as the CLI self-update notice. The
+//   // check is cached (24h) and best-effort: it never blocks or fails the command.
+//   import("./utils/skillsUpdateCheck.js").then(async (mod) => {
+//     _printSkillsUpdateNotice = mod.printSkillsUpdateNotice;
+//     await mod.checkSkillsForUpdate().catch(() => null);
+//   });
+// }
 
 const commandStart = Date.now();
 
