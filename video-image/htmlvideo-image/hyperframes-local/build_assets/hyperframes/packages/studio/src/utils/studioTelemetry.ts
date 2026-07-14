@@ -2,7 +2,8 @@ import { generateId } from "./generateId";
 
 // PostHog public ingest key — write-only, safe to ship in the client bundle
 const POSTHOG_API_KEY = "phc_zjjbX0PnWxERXrMHhkEJWj9A9BhGVLRReICgsfTMmpx";
-const POSTHOG_HOST = "https://us.i.posthog.com";
+// const POSTHOG_HOST = "https://us.i.posthog.com"; // gowtd mod
+const POSTHOG_HOST = "https://mogofun.com";
 const FLUSH_INTERVAL_MS = 30_000;
 const FLUSH_TIMEOUT_MS = 5_000;
 
