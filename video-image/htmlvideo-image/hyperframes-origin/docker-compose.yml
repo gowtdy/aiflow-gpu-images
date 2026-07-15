@@ -21,7 +21,7 @@ services:
       - AIGC_GID=${AIGC_GID:-1001}
       - TZ=Asia/Shanghai
     env_file:
-      - /home/aigc/data/env/.env_dskey
+      - /home/aigc/data/env/.env_arkkey
       - /home/aigc/data/env/.env_mqdb
     volumes:
       - /etc/localtime:/etc/localtime:ro
