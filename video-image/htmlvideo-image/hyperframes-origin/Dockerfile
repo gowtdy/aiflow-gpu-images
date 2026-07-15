@@ -10,9 +10,9 @@ COPY build_assets/ /app/
 
 # HyperFrames 需要 Node.js >= 22；固定 Active LTS 24.18.0（2026-07 当前 LTS 最新）
 # 运行依赖走 apt；Node / chrome-headless-shell 使用服务器已放好的离线包：
-#   build_assets/tools/node-v24.18.0-linux-x64.tar.xz
-#   build_assets/tools/chrome-headless-shell-linux64.zip
-# （COPY 后路径为 /app/tools/...）
+#   build_assets/software/node-v24.18.0-linux-x64.tar.xz
+#   build_assets/software/chrome-headless-shell-linux64.zip
+# （COPY 后路径为 /app/software/...）
 ARG NODE_VERSION=24.18.0
 ARG CHROME_HEADLESS_SHELL_VERSION=148.0.7778.167
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,10 +29,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && fc-cache -fv \
     && node --version && npm --version
 
-# chrome-headless-shell（BeginFrame 抓帧）；从本地 zip 解压，不再 npx 下载}
-RUN unzip -q "/app/software/chrome-headless-shell-linux64.zip" \
-         -d "/app/software/linux-${CHROME_HEADLESS_SHELL_VERSION}" \
-    && CHS="$(find /app/tools/chrome-headless-shell -name chrome-headless-shell -type f | head -n1)" \
+# chrome-headless-shell（BeginFrame 抓帧）；从本地 zip 解压，不再 npx 下载
+# zip 顶层为 chrome-headless-shell-linux64/，解压到 puppeteer 兼容布局后 find 二进制
+RUN mkdir -p "/app/tools/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION}" \
+    && unzip -q "/app/software/chrome-headless-shell-linux64.zip" \
+         -d "/app/tools/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION}" \
+    && CHS="$(find /app/tools/puppeteer/chrome-headless-shell -name chrome-headless-shell -type f | head -n1)" \
     && test -n "$CHS" \
     && ln -sf "$CHS" /app/tools/chrome/chrome-headless-shell \
     && /app/tools/chrome/chrome-headless-shell --version
