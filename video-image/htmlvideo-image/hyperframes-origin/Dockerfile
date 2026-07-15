@@ -4,20 +4,44 @@ FROM gpu50-baseimage:0.1
 
 USER root
 # HyperFrames 需要 Node.js >= 22；固定 Active LTS 24.18.0（2026-07 当前 LTS 最新）
+# 同时安装 chrome-headless-shell 运行依赖与字体（浏览器本体下方用 @puppeteer/browsers 安装）
 ARG NODE_VERSION=24.18.0
-RUN apt-get update && apt-get install -y ca-certificates curl xz-utils \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl xz-utils \
+    libgbm1 libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 \
+    libxdamage1 libxrandr2 libcups2 libasound2 libpangocairo-1.0-0 \
+    libxshmfence1 libgtk-3-0 \
+    fonts-liberation fonts-noto-color-emoji fonts-noto-cjk fonts-noto-core \
+    fonts-noto-extra fonts-noto-ui-core fonts-freefont-ttf fonts-dejavu-core \
+    fontconfig \
     && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
         | tar -xJ -C /usr/local --strip-components=1 \
     && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -fv \
     && node --version && npm --version
+
+# chrome-headless-shell（BeginFrame 抓帧）；apt 无此包，须从 Chrome for Testing 下载
+ARG CHROME_HEADLESS_SHELL_VERSION=148.0.7778.167
+RUN npx --yes @puppeteer/browsers install chrome-headless-shell@${CHROME_HEADLESS_SHELL_VERSION} \
+      --path /app/tools/puppeteer \
+    && CHS="$(find /app/tools/puppeteer/chrome-headless-shell -name chrome-headless-shell -type f | head -n1)" \
+    && test -n "$CHS" \
+    && ln -sf "$CHS" /app/tools/chrome/chrome-headless-shell \
+    && /app/tools/chrome/chrome-headless-shell --version
+
+ENV HYPERFRAMES_BROWSER_PATH=/app/tools/chrome/chrome-headless-shell
+ENV PRODUCER_HEADLESS_SHELL_PATH=/app/tools/chrome/chrome-headless-shell
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 ARG CLAUDE_CODE_VERSION=2.1.201
 RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
     && claude --version
 
-# 复制项目文件（chown 由 base entrypoint 在 run 時依 AIGC_UID/AIGC_GID 處理）
-RUN rm -rf /app/*
-COPY build_assets/ /app/
+# Claude Code 默认开启交互/API 调试日志（无需每次传 --debug）
+ENV DEBUG=1
+ENV CLAUDE_CODE_DEBUG_LOGS_DIR=/app/log/claude-debug.log
+ENV CLAUDE_CODE_DEBUG_LOG_LEVEL=verbose
+ENV ANTHROPIC_LOG=debug
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
