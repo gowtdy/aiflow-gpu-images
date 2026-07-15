@@ -26,7 +26,8 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      - /home/aigc/data/aioutput/videos:/app/output/videos
+      - /home/aigc/data/aioutput/hyperframes-origin-logs:/app/log
+      - /home/aigc/data/aioutput/videos:/app/videos
     extra_hosts:
       - "host.docker.internal:host-gateway"
     #tty: true
