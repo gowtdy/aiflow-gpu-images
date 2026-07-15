@@ -16,7 +16,7 @@ COPY build_assets/ /app/
 # 同时安装 chrome-headless-shell 运行依赖与字体（浏览器本体下方用 @puppeteer/browsers 安装）
 ARG NODE_VERSION=24.18.0
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl xz-utils \
+    ca-certificates curl xz-utils unzip \
     libgbm1 libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 \
     libxdamage1 libxrandr2 libcups2 libasound2t64 libpangocairo-1.0-0 \
     libxshmfence1 libgtk-3-0 \
