@@ -11,7 +11,7 @@ mkdir -p /home/aigc/data/aioutput/hyperframes-local-logs
 chmod -R 755 /home/aigc/data/aioutput/hyperframes-local-logs/
 
 mkdir -p /home/aigc/data/aioutput/videos
-sudo chmod -R 755 /home/aigc/data/videos
+chmod -R 755 /home/aigc/data/aioutput/videos/
 
 echo "permission set completed!"
 echo "directory permission information:"
