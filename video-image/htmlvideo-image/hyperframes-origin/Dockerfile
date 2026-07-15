@@ -42,6 +42,8 @@ ENV DEBUG=1
 ENV CLAUDE_CODE_DEBUG_LOGS_DIR=/app/log/claude-debug.log
 ENV CLAUDE_CODE_DEBUG_LOG_LEVEL=verbose
 ENV ANTHROPIC_LOG=debug
+ENV BUN_OPTIONS="--console-depth=50"
+ENV CLAUDE_CONFIG_DIR=/app/log/claude
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
