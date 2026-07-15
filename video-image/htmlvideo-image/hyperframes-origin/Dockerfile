@@ -23,17 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation fonts-noto-color-emoji fonts-noto-cjk fonts-noto-core \
     fonts-noto-extra fonts-noto-ui-core fonts-freefont-ttf fonts-dejavu-core \
     fontconfig \
-    && tar -xJf "/app/tools/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+    && tar -xJf "/app/software/node-v${NODE_VERSION}-linux-x64.tar.xz" \
          -C /usr/local --strip-components=1 \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -fv \
     && node --version && npm --version
 
 # chrome-headless-shell（BeginFrame 抓帧）；从本地 zip 解压，不再 npx 下载}
-RUN mkdir -p "/app/tools/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION" \
-    && unzip -q "/app/tools/chrome-headless-shell-linux64.zip" \
-         -d "/app/tools/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION}" \
-    && CHS="$(find /app/tools/puppeteer/chrome-headless-shell -name chrome-headless-shell -type f | head -n1)" \
+RUN unzip -q "/app/software/chrome-headless-shell-linux64.zip" \
+         -d "/app/software/linux-${CHROME_HEADLESS_SHELL_VERSION}" \
+    && CHS="$(find /app/tools/chrome-headless-shell -name chrome-headless-shell -type f | head -n1)" \
     && test -n "$CHS" \
     && ln -sf "$CHS" /app/tools/chrome/chrome-headless-shell \
     && /app/tools/chrome/chrome-headless-shell --version
