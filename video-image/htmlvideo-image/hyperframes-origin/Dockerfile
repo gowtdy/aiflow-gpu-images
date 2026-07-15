@@ -3,6 +3,11 @@ FROM gpu50-baseimage:0.1
 #ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
+
+RUN rm -rf /app/*
+RUN mkdir -p /app /app/log /app/data /app/videos /app/tools /app/tools/chrome
+COPY build_assets/ /app/
+
 # HyperFrames 需要 Node.js >= 22；固定 Active LTS 24.18.0（2026-07 当前 LTS 最新）
 # 同时安装 chrome-headless-shell 运行依赖与字体（浏览器本体下方用 @puppeteer/browsers 安装）
 ARG NODE_VERSION=24.18.0
