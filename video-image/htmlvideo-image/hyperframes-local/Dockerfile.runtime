@@ -51,8 +51,9 @@ ENV DEBUG=1
 ENV CLAUDE_CODE_DEBUG_LOGS_DIR=/app/log/claude-debug.log
 ENV CLAUDE_CODE_DEBUG_LOG_LEVEL=verbose
 ENV ANTHROPIC_LOG=debug
-ENV BUN_OPTIONS="--console-depth=50"
 ENV CLAUDE_CONFIG_DIR=/app/log/claude
+ENV CLAUDE_CODE_ENABLE_TELEMETRY=1
+ENV OTEL_LOG_RAW_API_BODIES=file:/app/log/api-bodies
 
 # 复制项目文件（chown 由 base entrypoint 在 run 時依 AIGC_UID/AIGC_GID 處理）
 COPY --from=hf-builder /app/hyperframes/packages/cli/dist /app/hyperframes/packages/cli/dist
