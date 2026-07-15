@@ -8,4 +8,12 @@
   2、版本自动检查更新修改
     package/cli/src/cli.ts
     package/cli/src/commands/init.ts
+
+  3、修改 templates
+    package/cli/src/templates/_shared/CLAUDE.md
+    package/cli/src/templates/_shared/AGENTS.md
+
+  4、
+  
+
     
