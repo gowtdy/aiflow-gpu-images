@@ -22,6 +22,12 @@ services:
       - TZ=Asia/Shanghai
     env_file:
       - /home/aigc/data/env/.env_dskey
+      - /home/aigc/data/env/.env_mqdb
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/aigc/data/aioutput/hyperframes-local-logs:/app/log
+      - /home/aigc/data/aioutput/videos:/app/videos
     extra_hosts:
       - "host.docker.internal:host-gateway"
     #tty: true
