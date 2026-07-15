@@ -9,26 +9,30 @@ RUN mkdir -p /app /app/log /app/data /app/videos /app/tools /app/tools/chrome
 COPY build_assets/ /app/
 
 # HyperFrames 需要 Node.js >= 22；固定 Active LTS 24.18.0（2026-07 当前 LTS 最新）
-# 同时安装 chrome-headless-shell 运行依赖与字体（浏览器本体下方用 @puppeteer/browsers 安装）
+# 运行依赖走 apt；Node / chrome-headless-shell 使用服务器已放好的离线包：
+#   build_assets/tools/node-v24.18.0-linux-x64.tar.xz
+#   build_assets/tools/chrome-headless-shell-linux64.zip
+# （COPY 后路径为 /app/tools/...）
 ARG NODE_VERSION=24.18.0
+ARG CHROME_HEADLESS_SHELL_VERSION=148.0.7778.167
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl xz-utils unzip \
+    ca-certificates xz-utils unzip \
     libgbm1 libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 \
     libxdamage1 libxrandr2 libcups2 libasound2t64 libpangocairo-1.0-0 \
     libxshmfence1 libgtk-3-0 \
     fonts-liberation fonts-noto-color-emoji fonts-noto-cjk fonts-noto-core \
     fonts-noto-extra fonts-noto-ui-core fonts-freefont-ttf fonts-dejavu-core \
     fontconfig \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
-        | tar -xJ -C /usr/local --strip-components=1 \
+    && tar -xJf "/app/tools/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+         -C /usr/local --strip-components=1 \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -fv \
     && node --version && npm --version
 
-# chrome-headless-shell（BeginFrame 抓帧）；apt 无此包，须从 Chrome for Testing 下载
-ARG CHROME_HEADLESS_SHELL_VERSION=148.0.7778.167
-RUN npx --yes @puppeteer/browsers install chrome-headless-shell@${CHROME_HEADLESS_SHELL_VERSION} \
-      --path /app/tools/puppeteer \
+# chrome-headless-shell（BeginFrame 抓帧）；从本地 zip 解压，不再 npx 下载}
+RUN mkdir -p "/app/tools/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION" \
+    && unzip -q "/app/tools/chrome-headless-shell-linux64.zip" \
+         -d "/app/tools/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION}" \
     && CHS="$(find /app/tools/puppeteer/chrome-headless-shell -name chrome-headless-shell -type f | head -n1)" \
     && test -n "$CHS" \
     && ln -sf "$CHS" /app/tools/chrome/chrome-headless-shell \
