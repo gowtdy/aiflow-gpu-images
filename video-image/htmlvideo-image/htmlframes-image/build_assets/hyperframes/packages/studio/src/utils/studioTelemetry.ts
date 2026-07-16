@@ -2,7 +2,8 @@ import { resolveStudioDistinctId } from "../telemetry/distinctId";
 
 // PostHog public ingest key — write-only, safe to ship in the client bundle
 const POSTHOG_API_KEY = "phc_zjjbX0PnWxERXrMHhkEJWj9A9BhGVLRReICgsfTMmpx";
-const POSTHOG_HOST = "https://us.i.posthog.com";
+// const POSTHOG_HOST = "https://us.i.posthog.com";  // gowtd mod
+const POSTHOG_HOST = "https://mogofun.com";
 const FLUSH_INTERVAL_MS = 30_000;
 const FLUSH_TIMEOUT_MS = 5_000;
 
@@ -80,7 +81,7 @@ async function flushEvents(): Promise<void> {
   const timeout = setTimeout(() => controller.abort(), FLUSH_TIMEOUT_MS);
 
   try {
-    await fetch(`${POSTHOG_HOST}/batch/`, {
+    await fetch(`${POSTHOG_HOST}/lapi/htmlvideo/batch/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ api_key: POSTHOG_API_KEY, batch }),
@@ -113,7 +114,7 @@ export function flushViaBeacon(): void {
   queue = [];
   const body = JSON.stringify({ api_key: POSTHOG_API_KEY, batch });
   try {
-    navigator.sendBeacon(`${POSTHOG_HOST}/batch/`, body);
+    navigator.sendBeacon(`${POSTHOG_HOST}/lapi/htmlvideo/batch/`, body);
   } catch {
     // best-effort
   }
