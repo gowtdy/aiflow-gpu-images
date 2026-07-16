@@ -43,6 +43,7 @@ import {
   copyFileSync,
   appendFileSync,
 } from "fs";
+import { tmpdir } from "node:os";
 import { parseHTML } from "linkedom";
 import { type CanvasResolution, type Fps, type FpsInput, toFps } from "@hyperframes/core";
 import {
@@ -76,6 +77,7 @@ import {
   isMemoryExhaustionError,
   isTransientBrowserError,
   isDrawElementVerificationError,
+  getDrawElementVerificationDetails,
 } from "@hyperframes/engine";
 import { join, dirname, resolve } from "path";
 import { totalmem } from "node:os";
@@ -102,6 +104,7 @@ import { resolveEffectiveHdrMode } from "./render/hdrMode.js";
 import {
   buildRenderPerfSummary,
   pushWorkerDedupPerfs,
+  roundDb,
   worstSubTimelineWaitOutcome,
 } from "./render/perfSummary.js";
 import { getCaptureStageBrowserConsole } from "./render/captureStageError.js";
@@ -449,6 +452,12 @@ export interface RenderPerfSummary {
     selfVerifyFallback: boolean;
     /** What tripped the fallback retry: psnr | blank | oom | capture_error. */
     fallbackReason?: string;
+    /** The failing PSNR (dB) when `fallbackReason === "psnr"`; undefined for blank/oom/capture_error (no score exists). */
+    fallbackFailedDb?: number;
+    /** Frame index the verification failure was detected at; set for both "psnr" and "blank" fallback reasons. */
+    fallbackFrameIndex?: number;
+    /** The HF_DE_VERIFY_MIN_DB threshold the failing dB breached; only set alongside fallbackFailedDb (psnr reason). */
+    fallbackThresholdDb?: number;
     /** Blank-guard counters. */
     blankSuspects: number;
     blankDeterministicAccepts: number;
@@ -558,7 +567,10 @@ export function applyRenderWarningPolicy(
     strictness,
     warningCodes: job.warnings.map((warning) => warning.code),
   });
-  if (strictness === "strict") {
+  const hasAudioProcessingFailure = job.warnings.some(
+    (warning) => warning.code === "audio_processing_failed",
+  );
+  if (strictness === "strict" || hasAudioProcessingFailure) {
     throw new RenderQualityError(job.warnings);
   }
 }
@@ -713,6 +725,16 @@ export function buildMissingFrameRetryBatches(
 
 export function getNextRetryWorkerCount(currentWorkers: number): number {
   return Math.max(1, Math.floor(currentWorkers / 2));
+}
+
+export function resolveRenderWorkDirPrefix(
+  outputPath: string,
+  jobId: string,
+  platform: NodeJS.Platform = process.platform,
+  systemTempDir: string = tmpdir(),
+): string {
+  if (platform === "win32") return join(systemTempDir, "hf-render-");
+  return join(dirname(outputPath), `work-${jobId}-`);
 }
 
 /**
@@ -1503,7 +1525,7 @@ export async function executeRenderJob(
   if (!existsSync(outputDir)) mkdirSync(outputDir, { recursive: true });
   const workDir = job.config.debug
     ? join(debugDir, job.id)
-    : mkdtempSync(join(outputDir, `work-${job.id}-`));
+    : mkdtempSync(resolveRenderWorkDirPrefix(outputPath, job.id));
   const pipelineStart = Date.now();
   const baseLog = job.config.logger ?? defaultLogger;
   const logPath = job.config.debug ? join(workDir, "render.log") : null;
@@ -1734,6 +1756,16 @@ export async function executeRenderJob(
     let captureParallelStreamForced = false;
     let deSelfVerifyFallback = false;
     let deFallbackReason: string | undefined;
+    // Structured detail behind deFallbackReason's "blank"/"psnr" bucket — the
+    // failing dB and frame index otherwise only exist as text inside the
+    // thrown error's message, unavailable to telemetry. Rounded once here
+    // (roundDb) so both downstream consumers — the render_complete
+    // perfSummary path and the crash-survival RenderCaptureObservability
+    // mirror — report the identical dB, not two different precisions for
+    // the same underlying score (review finding).
+    let deFallbackFailedDb: number | undefined;
+    let deFallbackFrameIndex: number | undefined;
+    let deFallbackThresholdDb: number | undefined;
     let deDrainStats: import("./render/stages/captureStreamingStage.js").DeDrainStats | undefined;
     updateCaptureObservability({ forceScreenshot: captureForceScreenshot });
     observability.checkpoint("compile", "composition metadata resolved", {
@@ -2708,13 +2740,21 @@ export async function executeRenderJob(
             throw err;
           const isMemoryExhaustion = !isVerifyError && isMemoryExhaustionError(err);
           deSelfVerifyFallback = isVerifyError;
+          // `kind` is a structural field on the error (DrawElementVerificationDetails),
+          // never derived from message text — a reworded message, a translated
+          // string, or a cross-module/serialized error must never be able to
+          // flip "blank" into "psnr" or vice versa (review finding).
+          const verifyDetails = isVerifyError ? getDrawElementVerificationDetails(err) : undefined;
           deFallbackReason = isVerifyError
-            ? /blank/i.test(err instanceof Error ? err.message : "")
-              ? "blank"
-              : "psnr"
+            ? (verifyDetails?.kind ?? "psnr")
             : isMemoryExhaustion
               ? "oom"
               : "capture_error";
+          if (isVerifyError) {
+            deFallbackFailedDb = roundDb(verifyDetails?.failedDb);
+            deFallbackFrameIndex = verifyDetails?.frameIndex;
+            deFallbackThresholdDb = roundDb(verifyDetails?.verifyThresholdDb);
+          }
           log.warn(
             isVerifyError
               ? "[Render] drawElement self-verification failed; re-rendering via screenshot"
@@ -2732,6 +2772,9 @@ export async function executeRenderJob(
             forceScreenshot: true,
             deSelfVerifyFallback,
             deFallbackReason,
+            deFallbackFailedDb,
+            deFallbackFrameIndex,
+            deFallbackThresholdDb,
           });
           probeSession = null;
           // Must clear BEFORE resolveParallelRouterRetryPlan recomputes
@@ -3020,6 +3063,9 @@ export async function executeRenderJob(
         preRouterWorkers: deParallelRouter ? preRoutingWorkerCount : undefined,
         selfVerifyFallback: deSelfVerifyFallback,
         fallbackReason: deFallbackReason,
+        fallbackFailedDb: deFallbackFailedDb,
+        fallbackFrameIndex: deFallbackFrameIndex,
+        fallbackThresholdDb: deFallbackThresholdDb,
         drainStats: deDrainStats,
       },
       hdrDiagnostics,

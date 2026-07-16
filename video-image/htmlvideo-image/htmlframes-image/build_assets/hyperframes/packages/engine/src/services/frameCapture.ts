@@ -201,14 +201,40 @@ export interface CaptureSession {
  * forceScreenshot. Discriminant-based guard (not instanceof) so it survives
  * duplicated module instances across package boundaries.
  */
+/**
+ * Structured detail carried alongside the human-readable message — lets
+ * telemetry report the actual failure kind / failing dB / frame index
+ * instead of the orchestrator having to regex them back out of formatted
+ * text (a message-text dependency is exactly the failure mode this shape
+ * exists to close — review finding: message wording, translation, or a
+ * cross-module/serialized error must never be able to flip the reported
+ * kind). All fields but `kind` are optional: a blank-frame trip has no PSNR
+ * score, so `failedDb`/`verifyThresholdDb` are omitted for that throw site.
+ */
+export interface DrawElementVerificationDetails {
+  kind: "blank" | "psnr";
+  frameIndex?: number;
+  failedDb?: number;
+  verifyThresholdDb?: number;
+}
+
 export class DrawElementVerificationError extends Error {
-  constructor(message: string) {
+  readonly kind: "blank" | "psnr";
+  readonly frameIndex?: number;
+  readonly failedDb?: number;
+  readonly verifyThresholdDb?: number;
+
+  constructor(message: string, details: DrawElementVerificationDetails) {
     super(message);
     this.name = "DrawElementVerificationError";
     // Discriminant property, assigned dynamically: isDrawElementVerificationError
     // reads it structurally so detection survives duplicated module instances
     // across package boundaries (where instanceof fails).
     (this as unknown as { deVerificationFailure: boolean }).deVerificationFailure = true;
+    this.kind = details.kind;
+    this.frameIndex = details.frameIndex;
+    this.failedDb = details.failedDb;
+    this.verifyThresholdDb = details.verifyThresholdDb;
   }
 }
 
@@ -220,6 +246,122 @@ export function isDrawElementVerificationError(err: unknown): boolean {
     e = (e as { cause?: unknown }).cause;
   }
   return false;
+}
+
+/**
+ * Extracts the structured details off a (possibly cause-wrapped) verification
+ * error — same chain-walk as isDrawElementVerificationError, structural
+ * (not instanceof) for the same duplicated-module-instance reason. Returns
+ * undefined when the error isn't a verification failure at all.
+ */
+export function getDrawElementVerificationDetails(
+  err: unknown,
+): DrawElementVerificationDetails | undefined {
+  let e: unknown = err;
+  for (let depth = 0; depth < 5 && typeof e === "object" && e !== null; depth++) {
+    const rec = e as { deVerificationFailure?: boolean } & Partial<DrawElementVerificationDetails>;
+    if (rec.deVerificationFailure === true) {
+      // Every construction path sets `kind` (required on the constructor), so
+      // this only defends against a malformed cross-module-instance shape —
+      // treat anything other than exactly "blank" as "psnr", the same
+      // fallback polarity the old message regex had, but driven by a
+      // structural field instead of parsing text.
+      const details: DrawElementVerificationDetails = {
+        kind: rec.kind === "blank" ? "blank" : "psnr",
+      };
+      if (typeof rec.frameIndex === "number") details.frameIndex = rec.frameIndex;
+      if (typeof rec.failedDb === "number") details.failedDb = rec.failedDb;
+      if (typeof rec.verifyThresholdDb === "number")
+        details.verifyThresholdDb = rec.verifyThresholdDb;
+      return details;
+    }
+    e = (e as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+/** Wait for inline CSS background images introduced by the latest seek. */
+export async function decodeDynamicCssBackgroundImages(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const root = globalThis as typeof globalThis & {
+      __hf_css_background_decoded?: Set<string>;
+      __hfDecodeDynamicCssBackgroundImages?: () => Promise<void>;
+    };
+    const decode = (root.__hfDecodeDynamicCssBackgroundImages ??= async () => {
+      const decoded = (root.__hf_css_background_decoded ??= new Set<string>());
+      const urls: string[] = [];
+      const parseBackgroundUrls = (value: string): string[] => {
+        const found: string[] = [];
+        let cursor = 0;
+
+        while (cursor < value.length) {
+          const start = value.indexOf("url(", cursor);
+          if (start < 0) break;
+
+          let index = start + 4;
+          while (index < value.length && /\s/.test(value[index] ?? "")) index += 1;
+
+          const quote = value[index] === '"' || value[index] === "'" ? value[index] : null;
+          if (quote) index += 1;
+          const contentStart = index;
+          let contentEnd = -1;
+
+          while (index < value.length) {
+            const char = value[index];
+            if (char === "\\") {
+              index = Math.min(index + 2, value.length);
+              continue;
+            }
+            if ((quote && char === quote) || (!quote && char === ")")) {
+              contentEnd = index;
+              break;
+            }
+            index += 1;
+          }
+
+          if (contentEnd < 0) break;
+          if (quote) {
+            index += 1;
+            while (index < value.length && /\s/.test(value[index] ?? "")) index += 1;
+            if (value[index] !== ")") {
+              cursor = index;
+              continue;
+            }
+          }
+
+          const url = value.slice(contentStart, contentEnd).trim();
+          if (url) found.push(url);
+          cursor = index + 1;
+        }
+
+        return found;
+      };
+
+      for (const element of document.querySelectorAll<HTMLElement>('[style*="background"]')) {
+        const backgroundImage = element.style.backgroundImage;
+        if (!backgroundImage || backgroundImage === "none") continue;
+
+        for (const url of parseBackgroundUrls(backgroundImage)) {
+          if (!decoded.has(url)) urls.push(url);
+        }
+      }
+
+      await Promise.all(
+        [...new Set(urls)].map(async (url) => {
+          const image = new Image();
+          image.src = url;
+          try {
+            await image.decode();
+            decoded.add(url);
+          } catch {
+            // Keep existing capture behavior for missing assets; request diagnostics report them.
+          }
+        }),
+      );
+    });
+
+    await decode();
+  });
 }
 
 // Circular buffer for browser console messages dumped on render failure diagnostics.
@@ -712,6 +854,9 @@ async function finalizeDrawElementInit(
   opts: { transparent: boolean; forceDE: boolean },
 ): Promise<void> {
   const { transparent, forceDE } = opts;
+  // Install the page-local decoder before batch drawElement capture begins;
+  // the batch loop re-runs it after every in-page seek.
+  await decodeDynamicCssBackgroundImages(page);
   // Self-verification ground truth: must run pre-injection — after the canvas
   // wraps the root, a page screenshot shows the canvas's last-drawn bitmap,
   // not the live DOM (see the Lim 6 boundary-screenshot note).
@@ -2005,6 +2150,8 @@ async function prepareFrameForCapture(
       .__hf_page_composite_pending;
   }, quantizedTime);
 
+  await decodeDynamicCssBackgroundImages(page);
+
   const seekMs = Date.now() - seekStart;
 
   // Before-capture hook (e.g. video frame injection) — runs before
@@ -2270,6 +2417,13 @@ export async function computeStaticFrameSet(
 // sampleCount, so that knob's effect on density stays monotonic (see below).
 const STATIC_VERIFY_REFERENCE_STRIDE = 24;
 
+// Verification uses full-page screenshots, whose cost scales with canvas size
+// and page complexity rather than frame count. Bound wall time as well as the
+// capture count so a long composition cannot spend minutes proving an
+// optimization before the real render starts. Exhaustion fails closed: dedup is
+// disabled and normal capture proceeds.
+const STATIC_VERIFY_MAX_MS = 15_000;
+
 /**
  * Interior verification points for a run [a..b], plus the always-included end `b`.
  * Density used to be a flat point-count cap (min(sampleCount, 8)), so a run's
@@ -2325,6 +2479,7 @@ export async function verifyStaticFramesSafe(
 ): Promise<{ badFrame: number; budgetExhausted: boolean } | null> {
   const frames = [...staticFrames].sort((a, b) => a - b);
   if (frames.length === 0) return null;
+  const deadline = Date.now() + STATIC_VERIFY_MAX_MS;
   // Runs are maximal-contiguous (adjacent frames merge), so a run's anchor a-1 is
   // guaranteed NOT static — always a freshly-captured frame.
   const runs: Array<{ a: number; b: number }> = [];
@@ -2371,9 +2526,11 @@ export async function verifyStaticFramesSafe(
     for (const { a, b } of runs) {
       const anchor = a - 1;
       if (anchor < 0) continue;
+      if (Date.now() >= deadline) return { badFrame: a, budgetExhausted: true };
       const anchorBuf = await seekCapture(anchor);
       spent++;
       for (const f of computeStaticVerificationPoints(a, b, sampleCount)) {
+        if (Date.now() >= deadline) return { badFrame: f, budgetExhausted: true };
         const cur = await seekCapture(f);
         spent++;
         if (!anchorBuf.equals(cur)) return { badFrame: f, budgetExhausted: false };
@@ -3406,6 +3563,11 @@ const TRANSIENT_BROWSER_ERROR_PATTERNS = [
   /Failed to launch the browser process/i,
   /Navigation timeout of \d+ ms exceeded/i,
   /ECONNREFUSED/i,
+  // Chromium can briefly invalidate even a localhost connection when Windows
+  // reports an adapter/route change. A fresh capture session succeeds once the
+  // network stack settles, so treat this like the other bounded navigation
+  // retries instead of failing the render immediately.
+  /net::ERR_NETWORK_CHANGED/i,
   // pollHfReady's own timeout — thrown when window.__renderReady never flips
   // true within playerReadyTimeout. "Runtime ready: false" means init simply
   // didn't finish in time (commonly a slow/contended host, e.g. several

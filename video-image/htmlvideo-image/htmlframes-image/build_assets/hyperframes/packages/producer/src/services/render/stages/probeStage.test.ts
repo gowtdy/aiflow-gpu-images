@@ -10,6 +10,7 @@ import {
 // the correct forceScreenshot value (regression for #1236 — probe was launched
 // in beginframe mode even when lowMemoryMode demanded screenshot capture).
 const capturedCfgs: unknown[] = [];
+const capturedOptions: unknown[] = [];
 
 const mockPage = {
   evaluate: async () => ({
@@ -43,12 +44,13 @@ mock.module("@hyperframes/engine", () => ({
   createCaptureSession: async (
     _url: string,
     _dir: string,
-    _opts: unknown,
+    opts: unknown,
     _nullArg: unknown,
     cfg: unknown,
   ) => {
     createSessionCallCount++;
     capturedCfgs.push(cfg);
+    capturedOptions.push(opts);
     if (createSessionError && createSessionCallCount <= createSessionFailUntilAttempt) {
       throw createSessionError;
     }
@@ -265,6 +267,90 @@ describe("hasVariableBoundMedia", () => {
 });
 
 describe("runProbeStage — forceScreenshot threading", () => {
+  it("launches a probe when a static-duration composition inserts video at runtime", async () => {
+    capturedCfgs.length = 0;
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 5;
+    input.compiled.html = `<script>
+      const video = document.createElement("video");
+      video.id = "gameplay";
+      video.src = "gameplay.mp4";
+      video.dataset.start = "0";
+      video.dataset.duration = "5";
+      document.body.appendChild(video);
+    </script>`;
+
+    await runProbeStage(input);
+
+    expect(capturedCfgs.length).toBeGreaterThan(0);
+  });
+
+  it("launches a probe when a static-duration composition inserts audio at runtime", async () => {
+    capturedCfgs.length = 0;
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 5;
+    input.compiled.html = `<script>
+      const audio = document.createElement("audio");
+      audio.src = "music.mp3";
+      document.body.appendChild(audio);
+    </script>`;
+
+    await runProbeStage(input);
+
+    expect(capturedCfgs.length).toBeGreaterThan(0);
+  });
+
+  it("launches a probe when a static-duration composition uses the Audio constructor", async () => {
+    capturedCfgs.length = 0;
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 5;
+    input.compiled.html = `<script>
+      const audio = new Audio("music.mp3");
+      document.body.appendChild(audio);
+    </script>`;
+
+    await runProbeStage(input);
+
+    expect(capturedCfgs.length).toBeGreaterThan(0);
+  });
+
+  it("launches a probe when script-inserted markup contains timed video", async () => {
+    capturedCfgs.length = 0;
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 5;
+    input.compiled.html = `<script>
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        '<video id="gameplay" src="gameplay.mp4" data-start="0" data-duration="5"></video>',
+      );
+    </script>`;
+
+    await runProbeStage(input);
+
+    expect(capturedCfgs.length).toBeGreaterThan(0);
+  });
+
+  it("launches a probe when script-inserted markup contains timed audio", async () => {
+    capturedCfgs.length = 0;
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 5;
+    input.compiled.html = `<script>
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        '<audio id="music" src="music.mp3" data-start="0" data-duration="5"></audio>',
+      );
+    </script>`;
+
+    await runProbeStage(input);
+
+    expect(capturedCfgs.length).toBeGreaterThan(0);
+  });
+
   it("launches a probe for a static-duration composition with variable-bound audio", async () => {
     capturedCfgs.length = 0;
     const { runProbeStage } = await import("./probeStage.js");
@@ -309,6 +395,45 @@ describe("runProbeStage — forceScreenshot threading", () => {
     expect(capturedCfgs.length).toBeGreaterThan(0);
     const capturedCfg = capturedCfgs[0] as { forceScreenshot: boolean };
     expect(capturedCfg.forceScreenshot).toBe(false);
+  });
+});
+
+describe("runProbeStage — render variable threading", () => {
+  it("passes render variables to the duration-discovery capture session", async () => {
+    capturedOptions.length = 0;
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({ stageForceScreenshot: false });
+    input.job.config.variables = { short: true, sceneCount: 2 };
+
+    await runProbeStage(input);
+
+    expect(capturedOptions[0]).toMatchObject({
+      variables: { short: true, sceneCount: 2 },
+    });
+  });
+});
+
+describe("runProbeStage — decimal duration frame count", () => {
+  it("does not add a frame for a six-decimal duration rounded from an exact frame boundary", async () => {
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 32.866667;
+    input.compiled.staticDuration = 32.866667;
+
+    const result = await runProbeStage(input);
+
+    expect(result.totalFrames).toBe(986);
+  });
+
+  it("still ceilings a duration that genuinely extends into the next frame", async () => {
+    const { runProbeStage } = await import("./probeStage.js");
+    const input = makeProbeInput({});
+    input.composition.duration = 32.867;
+    input.compiled.staticDuration = 32.867;
+
+    const result = await runProbeStage(input);
+
+    expect(result.totalFrames).toBe(987);
   });
 });
 

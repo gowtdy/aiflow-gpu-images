@@ -83,6 +83,16 @@ export interface ProbeStageInput {
   deviceScaleFactor: number;
 }
 
+const FRAME_BOUNDARY_EPSILON = 1e-3;
+
+function durationToFrameCount(duration: number, fps: number): number {
+  const rawFrameCount = duration * fps;
+  const nearestFrame = Math.round(rawFrameCount);
+  return Math.abs(rawFrameCount - nearestFrame) <= FRAME_BOUNDARY_EPSILON
+    ? nearestFrame
+    : Math.ceil(rawFrameCount);
+}
+
 export interface ProbeStageResult {
   /** May be reassigned from `recompileWithResolutions`. */
   compiled: CompiledComposition;
@@ -154,6 +164,24 @@ export function hasVariableBoundMedia(
   });
 }
 
+/**
+ * Runtime-created media does not exist when the static compiler scans the HTML.
+ * Launch a browser probe so discoverMediaFromBrowser can reconcile it before
+ * extraction, even when the root duration is already known. External script
+ * sources have no inline text to inspect and remain a known heuristic gap.
+ */
+function hasRuntimeInsertedMedia(html: string): boolean {
+  const { document } = parseHTML(html);
+  const scriptBodies = [...document.querySelectorAll("script")]
+    .map((script) => script.textContent ?? "")
+    .join("\n");
+  return (
+    /\bcreateElement\s*\(\s*["'`](?:video|audio)["'`]\s*\)/i.test(scriptBodies) ||
+    /\bnew\s+(?:Audio|Video)\s*\(/i.test(scriptBodies) ||
+    /<(?:video|audio)\b[^>]*>/i.test(scriptBodies)
+  );
+}
+
 export async function runProbeStage(input: ProbeStageInput): Promise<ProbeStageResult> {
   const {
     projectDir,
@@ -186,12 +214,14 @@ export async function runProbeStage(input: ProbeStageInput): Promise<ProbeStageR
     composition.audios.length,
   );
   const hasVariableMedia = hasVariableBoundMedia(compiled.html, job.config.variables);
+  const hasInsertedMedia = hasRuntimeInsertedMedia(compiled.html);
   const needsBrowser =
     composition.duration <= 0 ||
     compiled.unresolvedCompositions.length > 0 ||
     hasAutoStart ||
     hasScriptedAudio ||
-    hasVariableMedia;
+    hasVariableMedia ||
+    hasInsertedMedia;
 
   if (needsBrowser) {
     const reasons = [];
@@ -200,6 +230,7 @@ export async function runProbeStage(input: ProbeStageInput): Promise<ProbeStageR
       reasons.push(`${compiled.unresolvedCompositions.length} unresolved composition(s)`);
     if (hasAutoStart) reasons.push("auto-start video(s)");
     if (hasScriptedAudio) reasons.push("scripted audio volume");
+    if (hasInsertedMedia) reasons.push("runtime-inserted media");
     if (hasVariableMedia) reasons.push("variable-bound media source(s)");
 
     log.info("Launching browser for composition probe...", {
@@ -221,6 +252,7 @@ export async function runProbeStage(input: ProbeStageInput): Promise<ProbeStageR
       fps: job.config.fps,
       format: needsAlpha ? "png" : "jpeg",
       quality: needsAlpha ? undefined : 80,
+      variables: job.config.variables,
       deviceScaleFactor,
     };
 
@@ -558,7 +590,7 @@ export async function runProbeStage(input: ProbeStageInput): Promise<ProbeStageR
   const browserProbeMs = Date.now() - probeStart;
 
   const duration = composition.duration;
-  const totalFrames = Math.ceil(duration * fpsToNumber(job.config.fps));
+  const totalFrames = durationToFrameCount(duration, fpsToNumber(job.config.fps));
 
   if (duration <= 0) {
     // Gather diagnostics to help users understand why the render would produce a black video.
