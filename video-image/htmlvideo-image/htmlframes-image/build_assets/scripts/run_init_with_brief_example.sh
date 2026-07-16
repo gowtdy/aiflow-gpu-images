@@ -12,7 +12,7 @@ exec python3 "${INIT_SCRIPT}" \
   --name stock-selection-guide \
   --example blank \
   --skip-skills \
-  --theme "Pick a stock systematically with a 4-step funnel screen" \
+  --topic "Pick a stock systematically with a 4-step funnel screen" \
   --aspect 1920x1080 \
   --language en \
   --length 40s \
