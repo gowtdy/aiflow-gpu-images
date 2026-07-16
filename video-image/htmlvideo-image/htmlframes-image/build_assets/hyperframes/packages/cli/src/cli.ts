@@ -231,6 +231,7 @@ if (!isHelp && command !== "telemetry" && command !== "events" && command !== "u
 // tell the user to go run `skills update` — that's either redundant (it just
 // did) or, worse, misleading (it printed a stale nudge count from the last
 // cached check while reporting fresh results of its own).
+/* gowtd-mod: auto-update disabled begin
 if (
   !isHelp &&
   !hasJsonFlag &&
@@ -259,6 +260,7 @@ if (
     await mod.checkSkillsForUpdate().catch(() => null);
   });
 }
+gowtd-mod: auto-update disabled end */
 
 const commandStart = Date.now();
 const runId = getRunId();
@@ -271,8 +273,8 @@ const runId = getRunId();
 process.once("beforeExit", () => {
   _flush?.().catch(() => {});
   if (!hasJsonFlag) {
-    _printUpdateNotice?.();
-    _printSkillsUpdateNotice?.();
+//     _printUpdateNotice?.();
+//     _printSkillsUpdateNotice?.();
   }
 });
 
