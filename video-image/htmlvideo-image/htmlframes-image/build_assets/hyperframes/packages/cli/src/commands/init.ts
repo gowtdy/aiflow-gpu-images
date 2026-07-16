@@ -889,7 +889,8 @@ export default defineCommand({
       }
 
       if (!skipSkills) {
-        await keepSkillsCurrent(destDir);
+        // gowtd-mod: auto-update disabled begin
+        // await keepSkillsCurrent(destDir);  // gowtd-mod: auto-update disabled end
       }
 
       console.log();
@@ -1110,7 +1111,8 @@ export default defineCommand({
     // --skip-skills flag is temporarily neutered (see above); CI/tests opt out
     // via HYPERFRAMES_SKIP_SKILLS=1.
     if (!skipSkills) {
-      await keepSkillsCurrent(destDir);
+      // gowtd-mod: auto-update disabled begin
+      // await keepSkillsCurrent(destDir);  // gowtd-mod: auto-update disabled end
     }
 
     // Auto-launch studio preview
