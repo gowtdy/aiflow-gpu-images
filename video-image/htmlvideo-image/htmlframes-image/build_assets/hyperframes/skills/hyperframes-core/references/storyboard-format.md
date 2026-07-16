@@ -2,18 +2,19 @@
 
 Defines the storyboard's **base data format** only: the `STORYBOARD.md` file shape and the `StoryboardManifest` it parses into. How a workflow _generates_ a storyboard lives in that workflow; the optional narration/TTS file (`SCRIPT.md`) is a separate concern owned by the TTS step, not here.
 
-A storyboard is the **plan layer** for a video — an ordered set of **frames** (key moments) in one markdown file. HyperFrames Studio renders it as a contact sheet (the Storyboard view, behind `VITE_STUDIO_ENABLE_STORYBOARD=1`). Parser: `@hyperframes/core/storyboard` → `StoryboardManifest`; read API: `GET /api/projects/<id>/storyboard`.
+A storyboard is the **plan layer** for a video — an ordered set of **frames** (key moments) in one markdown file. HyperFrames Studio renders it as a contact sheet (the Storyboard view, available by default in every Studio session). Parser: `@hyperframes/core/storyboard` → `StoryboardManifest`; read API: `GET /api/projects/<id>/storyboard`.
 
 ## Frontmatter (global direction)
 
 YAML block at the top. Unknown keys are kept under `globals.extra`.
 
-| Key        | Meaning         | Example                                   |
-| ---------- | --------------- | ----------------------------------------- |
-| `format`   | Canvas size     | `1920x1080`                               |
-| `message`  | One-line thesis | `Ship a launch video in an afternoon`     |
-| `arc`      | Narrative arc   | `Hook → Problem → Solution → Proof → CTA` |
-| `audience` | Who it's for    | `indie devs on X`                         |
+| Key        | Meaning                                                           | Example                                   |
+| ---------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| `format`   | Canvas size                                                       | `1920x1080`                               |
+| `message`  | One-line thesis                                                   | `Ship a launch video in an afternoon`     |
+| `arc`      | Narrative arc                                                     | `Hook → Problem → Solution → Proof → CTA` |
+| `audience` | Who it's for                                                      | `indie devs on X`                         |
+| `mode`     | Interaction mode (see `brief-contract.md`; default collaborative) | `autonomous`                              |
 
 ## Per-frame sections
 
