@@ -39,7 +39,7 @@ Defaults:
 --tone — narrative voice (not visual style_preset):
   humorous, warm, serious, calm-authoritative, enthusiastic, provocative, deadpan, conversational
 
-CLI --theme → BRIEF message:
+CLI --topic → BRIEF message:
 CLI --tone  → BRIEF tone:
 ## Intent / ## Notes are auto-fused from structured fields (no --intent / --note).
 """
@@ -263,7 +263,7 @@ def derive_canvas(
 
 
 def build_intent(
-    theme: str,
+    topic: str,
     audience: str | None,
     angles: list[str],
     tone: str | None,
@@ -272,7 +272,7 @@ def build_intent(
     destination: str | None,
     aspect: str | None,
 ) -> str:
-    parts: list[str] = [f"Theme: {theme}."]
+    parts: list[str] = [f"Topic: {topic}."]
 
     mid: list[str] = []
     if audience:
@@ -323,7 +323,7 @@ def build_notes(
 
 def render_brief(
     *,
-    theme: str,
+    topic: str,
     destination: str | None,
     aspect: str | None,
     language: str | None,
@@ -337,7 +337,7 @@ def render_brief(
     lines: list[str] = ["---"]
     for key, val in HARDCODED_FRONTMATTER.items():
         lines.append(f"{key}: {val}")
-    lines.append(f"message: {yaml_quote(theme)}")
+    lines.append(f"message: {yaml_quote(topic)}")
     if destination:
         lines.append(f"destination: {destination}")
     if aspect:
@@ -361,7 +361,7 @@ def render_brief(
     lines.append("")
 
     intent = build_intent(
-        theme, audience, angles, tone, length, language, destination, aspect
+        topic, audience, angles, tone, length, language, destination, aspect
     )
     lines.append("## Intent")
     lines.append("")
@@ -452,7 +452,7 @@ aspect ↔ resolution ↔ destination
 
 --tone: humorous warm serious calm-authoritative enthusiastic provocative deadpan conversational
 
---theme maps to BRIEF message:; Intent/Notes are auto-generated.
+--topic maps to BRIEF message:; Intent/Notes are auto-generated.
 """.strip()
 
     p = argparse.ArgumentParser(
@@ -487,9 +487,9 @@ aspect ↔ resolution ↔ destination
 
     # Brief
     p.add_argument(
-        "--theme",
+        "--topic",
         required=True,
-        help="Video theme / core claim → BRIEF message: (required)",
+        help="Video topic / core claim → BRIEF message: (required)",
     )
     p.add_argument(
         "--aspect",
@@ -548,9 +548,9 @@ def main(argv: list[str] | None = None) -> int:
         print("error: cannot use --video and --audio together", file=sys.stderr)
         return 2
 
-    theme = args.theme.strip()
-    if not theme:
-        print("error: --theme must be non-empty", file=sys.stderr)
+    topic = args.topic.strip()
+    if not topic:
+        print("error: --topic must be non-empty", file=sys.stderr)
         return 2
 
     try:
@@ -576,7 +576,7 @@ def main(argv: list[str] | None = None) -> int:
             args.brief_file.read_text(encoding="utf-8")
             if args.brief_file
             else render_brief(
-                theme=theme,
+                topic=topic,
                 destination=destination,
                 aspect=aspect,
                 language=args.language,
@@ -607,6 +607,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: directory already exists and is not empty: {project_dir}", file=sys.stderr)
         return 1
 
+    print(
+        "run_init params:",
+        {
+            "project_dir": str(project_dir),
+            "example": args.example,
+            "resolution": resolution,
+            "video": args.video,
+            "audio": args.audio,
+            "skip_transcribe": args.skip_transcribe,
+            "whisper_model": args.whisper_model,
+            "whisper_language": args.whisper_language,
+            "tailwind": args.tailwind,
+            "skip_skills": args.skip_skills,
+        },
+        flush=True,
+    )
     rc = run_init(
         project_dir,
         example=args.example,
@@ -620,6 +636,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_skills=args.skip_skills,
     )
     if rc != 0:
+        print(f"error: hyperframes init failed with exit code {rc}", file=sys.stderr)
         return rc
 
     if not project_dir.is_dir():
@@ -631,10 +648,34 @@ def main(argv: list[str] | None = None) -> int:
             if not args.brief_file.is_file():
                 print(f"error: --brief-file not found: {args.brief_file}", file=sys.stderr)
                 return 1
+            print(
+                "copy brief_file:",
+                {
+                    "src": str(args.brief_file),
+                    "dst": str(brief_path),
+                },
+                flush=True,
+            )
             shutil.copyfile(args.brief_file, brief_path)
         else:
+            print(
+                "render_brief params:",
+                {
+                    "topic": topic,
+                    "destination": destination,
+                    "aspect": aspect,
+                    "language": args.language,
+                    "length": args.length,
+                    "angles": angles,
+                    "tone": args.tone,
+                    "audience": args.audience,
+                    "assets": list(args.assets or []),
+                    "customizations": list(args.customizations or []),
+                },
+                flush=True,
+            )
             brief = render_brief(
-                theme=theme,
+                topic=topic,
                 destination=destination,
                 aspect=aspect,
                 language=args.language,
