@@ -3,7 +3,9 @@
 Non-interactive HyperFrames project scaffold + BRIEF.md writer.
 
 Runs `npx hyperframes init <data-dir>/<name> --non-interactive ...`, then writes
-BRIEF.md from CLI fields (no interactive brief questions).
+BRIEF.md from CLI fields (no interactive brief questions), writes --topic to
+capture/extracted/visible-text.txt, and writes capture/extracted/tokens.json
+(title=topic, description=intent, empty colors/fonts).
 
 Debug / sample run (edit flags in the wrapper):
 
@@ -321,6 +323,22 @@ def build_notes(
     return notes
 
 
+def render_tokens(*, topic: str, intent: str) -> str:
+    return (
+        json.dumps(
+            {
+                "title": topic,
+                "description": intent,
+                "colors": [],
+                "fonts": [],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n"
+    )
+
+
 def render_brief(
     *,
     topic: str,
@@ -570,6 +588,19 @@ def main(argv: list[str] | None = None) -> int:
     data_dir = Path(args.data_dir).expanduser().resolve()
     project_dir = data_dir / args.name
     brief_path = project_dir / "BRIEF.md"
+    extracted_dir = project_dir / "capture" / "extracted"
+    visible_text_path = extracted_dir / "visible-text.txt"
+    tokens_path = extracted_dir / "tokens.json"
+    intent = build_intent(
+        topic,
+        args.audience,
+        angles,
+        args.tone,
+        args.length,
+        args.language,
+        destination,
+        aspect,
+    )
 
     if args.dry_run:
         brief = (
@@ -593,10 +624,13 @@ def main(argv: list[str] | None = None) -> int:
             "dry_run": True,
             "project": str(project_dir),
             "brief": str(brief_path),
+            "visible_text": str(visible_text_path),
+            "tokens": str(tokens_path),
             "resolution": resolution,
             "destination": destination,
             "aspect": aspect,
             "brief_preview": brief,
+            "tokens_preview": json.loads(render_tokens(topic=topic, intent=intent)),
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json else brief)
         return 0
@@ -691,6 +725,37 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: failed to write BRIEF.md: {e}", file=sys.stderr)
         return 1
 
+    try:
+        print(
+            "write visible-text:",
+            {
+                "path": str(visible_text_path),
+                "topic": topic,
+            },
+            flush=True,
+        )
+        extracted_dir.mkdir(parents=True, exist_ok=True)
+        visible_text_path.write_text(topic + "\n", encoding="utf-8")
+    except OSError as e:
+        print(f"error: failed to write visible-text.txt: {e}", file=sys.stderr)
+        return 1
+
+    try:
+        tokens = render_tokens(topic=topic, intent=intent)
+        print(
+            "write tokens:",
+            {
+                "path": str(tokens_path),
+                "title": topic,
+                "description": intent,
+            },
+            flush=True,
+        )
+        tokens_path.write_text(tokens, encoding="utf-8")
+    except OSError as e:
+        print(f"error: failed to write tokens.json: {e}", file=sys.stderr)
+        return 1
+
     if args.json:
         print(
             json.dumps(
@@ -698,6 +763,8 @@ def main(argv: list[str] | None = None) -> int:
                     "ok": True,
                     "project": str(project_dir),
                     "brief": str(brief_path),
+                    "visible_text": str(visible_text_path),
+                    "tokens": str(tokens_path),
                 },
                 ensure_ascii=False,
             )
