@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_SCRIPT="${SCRIPT_DIR}/init_with_brief.py"
 
 exec python3 "${INIT_SCRIPT}" \
-  --name stock-selection-guide \
+  --name first-video \
   --example blank \
   --skip-skills \
   --topic "Pick a stock systematically with a 4-step funnel screen" \
