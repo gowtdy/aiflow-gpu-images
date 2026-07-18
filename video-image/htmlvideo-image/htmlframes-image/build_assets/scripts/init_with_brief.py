@@ -612,6 +612,7 @@ aspect ↔ resolution ↔ destination
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    print(f"[debug] args: {vars(args)}", file=sys.stderr)
 
     if args.video and args.audio:
         print("error: cannot use --video and --audio together", file=sys.stderr)
