@@ -4,8 +4,9 @@ Non-interactive HyperFrames project scaffold + BRIEF.md writer.
 
 Runs `npx hyperframes init <data-dir>/<name> --non-interactive ...`, then writes
 BRIEF.md from CLI fields (no interactive brief questions), writes --topic to
-capture/extracted/visible-text.txt, and writes capture/extracted/tokens.json
-(title=topic, description=intent, empty colors/fonts).
+capture/extracted/visible-text.txt, writes capture/extracted/tokens.json
+(title=topic, description=intent, empty colors/fonts), and when --preset is set
+runs `node build-frame.mjs --preset <name> --videodir <project>`.
 
 Debug / sample run (edit flags in the wrapper):
 
@@ -40,6 +41,8 @@ Defaults:
 
 --tone — narrative voice (not visual style_preset):
   humorous, warm, serious, calm-authoritative, enthusiastic, provocative, deadpan, conversational
+
+--preset — frame preset name (presetName for build-frame.mjs) → BRIEF style_preset:
 
 CLI --topic → BRIEF message:
 CLI --tone  → BRIEF tone:
@@ -155,6 +158,25 @@ TONE_LABELS = {
 }
 
 KNOWN_TONES = frozenset(TONE_LABELS)
+
+# frame-presets folder names (build-frame.mjs --preset / BRIEF style_preset)
+KNOWN_PRESETS = frozenset(
+    {
+        "biennale-yellow",
+        "blockframe",
+        "blue-professional",
+        "bold-poster",
+        "broadside",
+        "capsule",
+        "cartesian",
+        "claude",
+        "cobalt-grid",
+        "coral",
+        "creative-mode",
+        "daisy-days",
+        "editorial-forest",
+    }
+)
 
 ASPECT_NOTES = {
     "1920x1080": "landscape 16:9",
@@ -349,6 +371,7 @@ def render_brief(
     angles: list[str],
     tone: str | None,
     audience: str | None,
+    preset: str | None,
     assets: list[str],
     customizations: list[str],
 ) -> str:
@@ -375,6 +398,8 @@ def render_brief(
         lines.append(f"tone: {tone}")
     if audience:
         lines.append(f"audience: {yaml_quote(audience)}")
+    if preset:
+        lines.append(f"style_preset: {preset}")
     lines.append("---")
     lines.append("")
 
@@ -457,6 +482,26 @@ def run_init(
     return proc.returncode
 
 
+def run_build_frame(project_dir: Path, *, preset: str) -> int:
+    """Run build-frame.mjs: node build-frame.mjs --preset <preset> --videodir <project>."""
+    script = Path(__file__).resolve().parent / "build-frame.mjs"
+    if not script.is_file():
+        print(f"error: build-frame.mjs not found: {script}", file=sys.stderr)
+        return 1
+
+    cmd = [
+        "node",
+        str(script),
+        "--preset",
+        preset,
+        "--videodir",
+        str(project_dir),
+    ]
+    print("+", " ".join(cmd), file=sys.stderr)
+    proc = subprocess.run(cmd)
+    return proc.returncode
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     epilog = """
 aspect ↔ resolution ↔ destination
@@ -469,6 +514,8 @@ aspect ↔ resolution ↔ destination
   how-to concept listicle comparison narrative problem-solution
 
 --tone: humorous warm serious calm-authoritative enthusiastic provocative deadpan conversational
+
+--preset: frame presetName (e.g. capsule, claude) → BRIEF style_preset:
 
 --topic maps to BRIEF message:; Intent/Notes are auto-generated.
 """.strip()
@@ -531,6 +578,10 @@ aspect ↔ resolution ↔ destination
     p.add_argument("--tone", help="Narrative tone (e.g. humorous)")
     p.add_argument("--audience", help="Who will watch")
     p.add_argument(
+        "--preset",
+        help="Frame presetName for build-frame.mjs → BRIEF style_preset: (e.g. capsule)",
+    )
+    p.add_argument(
         "--asset",
         action="append",
         default=[],
@@ -585,6 +636,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.tone:
         warn_unknown("tone", args.tone, KNOWN_TONES)
 
+    preset = args.preset.strip() if args.preset else None
+    if preset:
+        warn_unknown("preset", preset, KNOWN_PRESETS)
+
     data_dir = Path(args.data_dir).expanduser().resolve()
     project_dir = data_dir / args.name
     brief_path = project_dir / "BRIEF.md"
@@ -615,6 +670,7 @@ def main(argv: list[str] | None = None) -> int:
                 angles=angles,
                 tone=args.tone,
                 audience=args.audience,
+                preset=preset,
                 assets=list(args.assets or []),
                 customizations=list(args.customizations or []),
             )
@@ -629,6 +685,12 @@ def main(argv: list[str] | None = None) -> int:
             "resolution": resolution,
             "destination": destination,
             "aspect": aspect,
+            "preset": preset,
+            "build_frame": (
+                f"node build-frame.mjs --preset {preset} --videodir {project_dir}"
+                if preset
+                else None
+            ),
             "brief_preview": brief,
             "tokens_preview": json.loads(render_tokens(topic=topic, intent=intent)),
         }
@@ -703,6 +765,7 @@ def main(argv: list[str] | None = None) -> int:
                     "angles": angles,
                     "tone": args.tone,
                     "audience": args.audience,
+                    "preset": preset,
                     "assets": list(args.assets or []),
                     "customizations": list(args.customizations or []),
                 },
@@ -717,6 +780,7 @@ def main(argv: list[str] | None = None) -> int:
                 angles=angles,
                 tone=args.tone,
                 audience=args.audience,
+                preset=preset,
                 assets=list(args.assets or []),
                 customizations=list(args.customizations or []),
             )
@@ -756,6 +820,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: failed to write tokens.json: {e}", file=sys.stderr)
         return 1
 
+    if preset:
+        print(
+            "run_build_frame params:",
+            {
+                "preset": preset,
+                "videodir": str(project_dir),
+            },
+            flush=True,
+        )
+        rc = run_build_frame(project_dir, preset=preset)
+        if rc != 0:
+            print(f"error: build-frame failed with exit code {rc}", file=sys.stderr)
+            return rc
+
     if args.json:
         print(
             json.dumps(
@@ -765,6 +843,7 @@ def main(argv: list[str] | None = None) -> int:
                     "brief": str(brief_path),
                     "visible_text": str(visible_text_path),
                     "tokens": str(tokens_path),
+                    "preset": preset,
                 },
                 ensure_ascii=False,
             )
