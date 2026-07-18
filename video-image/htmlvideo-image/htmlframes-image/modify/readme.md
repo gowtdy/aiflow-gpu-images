@@ -18,7 +18,8 @@
     package/cli/src/templates/_shared/AGENTS.md
 
 
-  4、
-  
+  4、调整 build_assets/scripts/build-frame.mjs 路径默认值
+    - hyperframesDir：必须通过 --videodir <dir> 参数传入（不再默认 "."）
+    - presetDir：默认改为 /app/hyperframes/skills/hyperframes-creative/frame-presets
+    脚本：python3 modify/patch-build-frame.py
 
-    
