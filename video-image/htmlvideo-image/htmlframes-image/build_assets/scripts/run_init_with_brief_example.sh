@@ -20,4 +20,5 @@ exec python3 "${INIT_SCRIPT}" \
   --angle how-to \
   --tone humorous \
   --audience "everyday investors" \
+  --preset capsule \
   "$@"
