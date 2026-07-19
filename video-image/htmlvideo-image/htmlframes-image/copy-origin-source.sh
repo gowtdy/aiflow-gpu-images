@@ -5,6 +5,10 @@ origin_source_path=/Users/gowtd/work/src/open/video/hyperframes
 build_assets_path=build_assets
 target_path=${build_assets_path}/hyperframes
 bak_path=hyperframe_bak
+if [ -e "${bak_path}" ]; then
+  echo "rm -rf ${bak_path}"
+  rm -rf "${bak_path}"
+fi
 echo "mv ${target_path} ${bak_path}"
 mv ${target_path} ${bak_path}
 
@@ -24,6 +28,11 @@ mkdir -p ${target_path}/skills
 cp -r ${origin_source_path}/skills/hyperframes-cli ${target_path}/skills
 cp -r ${origin_source_path}/skills/hyperframes-core ${target_path}/skills
 cp -r ${origin_source_path}/skills/hyperframes-creative ${target_path}/skills
+cp -r ${origin_source_path}/skills/hyperframes-animation ${target_path}/skills
+# restore AIFlow-owned skills (not from upstream)
+if [ -d "${bak_path}/skills/aiflow-build-storyboard" ]; then
+  cp -r "${bak_path}/skills/aiflow-build-storyboard" "${target_path}/skills/"
+fi
 mkdir -p ${build_assets_path}/scripts/lib
 cp ${origin_source_path}/skills/faceless-explainer/scripts/build-frame.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/tokens.mjs ${build_assets_path}/scripts/lib/
