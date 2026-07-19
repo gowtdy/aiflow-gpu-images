@@ -59,6 +59,9 @@ ENV ANTHROPIC_LOG=debug
 ENV CLAUDE_CONFIG_DIR=/app/log/claude
 ENV CLAUDE_CODE_ENABLE_TELEMETRY=1
 ENV OTEL_LOG_RAW_API_BODIES=file:/app/log/api-bodies
+# Container runs as root; Claude CLI blocks --dangerously-skip-permissions as root
+# unless it sees a sandbox. IS_SANDBOX=1 is the supported escape hatch.
+ENV IS_SANDBOX=1
 
 # 复制项目文件（chown 由 base entrypoint 在 run 時依 AIGC_UID/AIGC_GID 處理）
 COPY --from=hf-builder /app/hyperframes/packages/cli/dist /app/hyperframes/packages/cli/dist
