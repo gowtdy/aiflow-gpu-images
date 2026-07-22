@@ -58,6 +58,9 @@ ENV CLAUDE_CODE_DEBUG_LOG_LEVEL=verbose
 ENV ANTHROPIC_LOG=debug
 ENV CLAUDE_CONFIG_DIR=/app/log/claude
 ENV CLAUDE_CODE_ENABLE_TELEMETRY=1
+# 主 agent 结束本轮后，若还有后台任务（run_in_background: true 的 subagent、后台 shell 等），claude --print 默认最多再等 600s（10 分钟）
+# 或设成具体毫秒，例如 1800000 = 30 分钟
+ENV CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=1800000
 ENV OTEL_LOG_RAW_API_BODIES=file:/app/log/api-bodies
 # Container runs as root; Claude CLI blocks --dangerously-skip-permissions as root
 # unless it sees a sandbox. IS_SANDBOX=1 is the supported escape hatch.
