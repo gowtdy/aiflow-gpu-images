@@ -12,9 +12,9 @@ exec python3 "${INIT_SCRIPT}" \
   --name first-video \
   --example blank \
   --skip-skills \
-  --topic "Pick a stock systematically with a 4-step funnel screen" \
+  --topic "如何选择一支股票？" \
   --aspect 1920x1080 \
-  --language en \
+  --language zh \
   --length 40s \
   --angle practitioner \
   --angle how-to \
