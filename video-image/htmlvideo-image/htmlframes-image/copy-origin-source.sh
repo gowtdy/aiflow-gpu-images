@@ -33,6 +33,9 @@ cp -r ${origin_source_path}/skills/hyperframes-animation ${target_path}/skills
 if [ -d "${bak_path}/skills/aiflow-build-storyboard" ]; then
   cp -r "${bak_path}/skills/aiflow-build-storyboard" "${target_path}/skills/"
 fi
+if [ -d "${bak_path}/skills/aiflow-build-frame" ]; then
+  cp -r "${bak_path}/skills/aiflow-build-frame" "${target_path}/skills/"
+fi
 mkdir -p ${build_assets_path}/scripts/lib
 cp ${origin_source_path}/skills/faceless-explainer/scripts/build-frame.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/tokens.mjs ${build_assets_path}/scripts/lib/
