@@ -23,3 +23,7 @@
     - presetDir：默认改为 /app/hyperframes/skills/hyperframes-creative/frame-presets
     脚本：python3 modify/patch-build-frame.py
 
+  5、调整 build_assets/scripts/assemble-index.mjs 路径参数
+    - hyperframesDir：必须通过 --videodir <dir> 参数传入（替换原 --hyperframes，不再默认 "."）
+    脚本：python3 modify/patch-assemble-index.py
+
