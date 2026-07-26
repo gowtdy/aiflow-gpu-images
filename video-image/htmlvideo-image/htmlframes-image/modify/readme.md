@@ -25,5 +25,6 @@
 
   5、调整 build_assets/scripts/assemble-index.mjs 路径参数
     - hyperframesDir：必须通过 --videodir <dir> 参数传入（替换原 --hyperframes，不再默认 "."）
+    - bgmDefaultVolume 引入改为 /app/hyperframes/skills/media-use/audio/scripts/lib/bgm.mjs
     脚本：python3 modify/patch-assemble-index.py
 
