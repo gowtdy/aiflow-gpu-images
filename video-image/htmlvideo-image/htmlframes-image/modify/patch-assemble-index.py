@@ -4,6 +4,8 @@ Patch build_assets/scripts/assemble-index.mjs for container layout:
 
   1. Require --videodir <dir> (no default ".")
      Assigns to hyperframesDir (replaces --hyperframes).
+  2. Point bgmDefaultVolume import at container media-use path
+     /app/hyperframes/skills/media-use/audio/scripts/lib/bgm.mjs
 
 Usage:
   python3 modify/patch-assemble-index.py [ASSEMBLE_INDEX_MJS]
@@ -17,6 +19,11 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TARGET = PROJECT_ROOT / "build_assets" / "scripts" / "assemble-index.mjs"
+
+BGM_IMPORT_NEW = (
+    'import { bgmDefaultVolume } from '
+    '"/app/hyperframes/skills/media-use/audio/scripts/lib/bgm.mjs";'
+)
 
 # Idempotent sentinels (appear in replaced code comments / markers).
 MARK = "gowtd-mod: assemble-index paths"
@@ -53,6 +60,17 @@ USAGE_OLD = re.compile(
 )
 USAGE_NEW = "--videodir <project root>"
 
+# Upstream relative import, or any prior absolute/relative variant of the same module.
+OLD_BGM_IMPORT = re.compile(
+    r'^import \{ bgmDefaultVolume \} from "[^"]*media-use/audio/scripts/lib/bgm\.mjs";\s*$',
+    re.M,
+)
+PATCHED_BGM_IMPORT = re.compile(
+    r'^import \{ bgmDefaultVolume \} from '
+    r'"/app/hyperframes/skills/media-use/audio/scripts/lib/bgm\.mjs";\s*$',
+    re.M,
+)
+
 
 def patch(path: Path) -> bool:
     text = path.read_text()
@@ -73,6 +91,15 @@ def patch(path: Path) -> bool:
     if USAGE_OLD.search(text):
         text = USAGE_OLD.sub(USAGE_NEW, text, count=1)
         print("  [patch] header comment --videodir")
+
+    if PATCHED_BGM_IMPORT.search(text):
+        print("  [ok] bgmDefaultVolume import already uses container path")
+    elif OLD_BGM_IMPORT.search(text):
+        text = OLD_BGM_IMPORT.sub(BGM_IMPORT_NEW, text, count=1)
+        print("  [patch] bgmDefaultVolume import → /app/hyperframes/skills/media-use/...")
+    else:
+        print("  [error] could not find bgmDefaultVolume import", file=sys.stderr)
+        return False
 
     if MARK not in text:
         text = text.replace(
