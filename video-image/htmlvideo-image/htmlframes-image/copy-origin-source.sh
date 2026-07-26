@@ -39,6 +39,10 @@ fi
 mkdir -p ${build_assets_path}/scripts/lib
 cp ${origin_source_path}/skills/faceless-explainer/scripts/build-frame.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/tokens.mjs ${build_assets_path}/scripts/lib/
+cp ${origin_source_path}/skills/faceless-explainer/scripts/assemble-index.mjs ${build_assets_path}/scripts/
+cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/storyboard.mjs ${build_assets_path}/scripts/lib/
+cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/dimensions.mjs ${build_assets_path}/scripts/lib/
+cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/assets.mjs ${build_assets_path}/scripts/lib/
 cp ${origin_source_path}/bun.lock ${origin_source_path}/package.json ${origin_source_path}/CLAUDE.md ${origin_source_path}/AGENTS.md ${target_path}
 
 echo "patch telemetry"
@@ -47,3 +51,5 @@ echo "disable auto update"
 python3 modify/disable-auto-update.py
 echo "remove creation workflows"
 python3 modify/remove-creation-workflows.py
+echo "patch assemble-index --videodir"
+python3 modify/patch-assemble-index.py
