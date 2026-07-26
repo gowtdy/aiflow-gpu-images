@@ -29,6 +29,7 @@ cp -r ${origin_source_path}/skills/hyperframes-cli ${target_path}/skills
 cp -r ${origin_source_path}/skills/hyperframes-core ${target_path}/skills
 cp -r ${origin_source_path}/skills/hyperframes-creative ${target_path}/skills
 cp -r ${origin_source_path}/skills/hyperframes-animation ${target_path}/skills
+cp -r ${origin_source_path}/skills/media-use ${target_path}/skills
 # restore AIFlow-owned skills (not from upstream)
 if [ -d "${bak_path}/skills/aiflow-build-storyboard" ]; then
   cp -r "${bak_path}/skills/aiflow-build-storyboard" "${target_path}/skills/"
