@@ -33,3 +33,8 @@
       （替换原 --hyperframes，不再默认 "."）
     脚本：python3 modify/patch-transitions.py
 
+  7、调整 build_assets/scripts/frame-packets.mjs 容器路径
+    - core import：改为 /app/hyperframes/skills/hyperframes-core/scripts/lib/frame-packets-core.mjs
+    - SKILL_DIR：改为 /app/hyperframes/skills/aiflow-build-frame-html
+    脚本：python3 modify/patch-frame-packets.py
+
