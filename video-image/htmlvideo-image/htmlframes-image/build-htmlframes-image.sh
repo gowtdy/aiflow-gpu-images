@@ -8,14 +8,19 @@
 #
 # Override image tags:
 #   BUILDER_IMAGE=my-registry/hyperframes-builder:0.1 RUNTIME_IMAGE=hyperframes-local-image:0.1 ./build-hyperframes-image.sh
+# Bun npm registry (builder install). Default: npmmirror. Official:
+#   BUN_REGISTRY=https://registry.npmjs.org ./build-htmlframes-image.sh builder
 set -euo pipefail
 
 BUILDER_IMAGE="${BUILDER_IMAGE:-htmlframes-builder:0.1}"
 RUNTIME_IMAGE="${RUNTIME_IMAGE:-htmlframes-image:0.1}"
+BUN_REGISTRY="${BUN_REGISTRY:-https://registry.npmmirror.com}"
 TARGET="${1:-all}"
 
 build_builder() {
-  docker build --progress=plain -t "${BUILDER_IMAGE}" -f Dockerfile.builder .
+  docker build --progress=plain -t "${BUILDER_IMAGE}" \
+    --build-arg "BUN_REGISTRY=${BUN_REGISTRY}" \
+    -f Dockerfile.builder .
 }
 
 build_runtime() {
