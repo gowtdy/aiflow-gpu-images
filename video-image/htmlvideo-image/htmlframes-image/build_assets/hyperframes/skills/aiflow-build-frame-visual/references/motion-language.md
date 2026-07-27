@@ -1,6 +1,6 @@
 # Motion language — the move vocabulary + the motion doctrine + the seek-safe core
 
-> The motion layer for **Step 4 (Visual design)**. When you write a frame's **time-coded shot sequence**, you name each scene's move **inline from the vocabulary below** — a named palette of the moves the golden corpus actually uses. Each move carries the **backing rule id** in this skill's local `../hyperframes-animation/rules/`; cite that id so the move resolves to a real recipe when a **frame worker** implements it in Step 5 (the worker reads the rule body in `../hyperframes-animation/rules/<id>.md` — it reproduces the move, it does not guess from the name). You name motion by **role / move name**, never by raw GSAP curve, ms, or stagger formula — the worker maps the curve. Between-frame **transitions are not yours**: story names `transition_in`, the harness injects it; that injected transition **is** the frame's exit. For cuts a worker builds INSIDE a frame (within-scene swaps, scene-to-scene seams), see the catalog in `cut-catalog.md`.
+> The motion layer for **`/aiflow-build-frame-visual`**. When you write a frame's **time-coded shot sequence**, you name each scene's move **inline from the vocabulary below** — a named palette of the moves the golden corpus actually uses. Each move carries the **backing rule id** in this skill's local `../hyperframes-animation/rules/`; cite that id so the move resolves to a real recipe when a **frame worker** implements it in `/aiflow-build-frame-html` (the worker reads the rule body in `../hyperframes-animation/rules/<id>.md` — it reproduces the move, it does not guess from the name). You name motion by **role / move name**, never by raw GSAP curve, ms, or stagger formula — the worker maps the curve. Between-frame **transitions are not yours**: story names `transition_in`, the harness injects it; that injected transition **is** the frame's exit. For cuts a worker builds INSIDE a frame (within-scene swaps, scene-to-scene seams), see the catalog in `../aiflow-build-frame-html/references/cut-catalog.md`.
 
 A good explainer feels like one continuous film — one camera, one motion feel, **smooth and timed to the voiceover** — not a pile of slides that animate once and freeze. In an explainer the development _is_ the teaching: the formula assembling, the diagram gaining a layer, the count-up landing. The doctrine in Part 2 is load-bearing: when in doubt, do what it says.
 
@@ -62,9 +62,9 @@ Reach into this palette when naming a scene's motion. Pick the move that matches
 
 The velocity-matched cuts a worker authors between a frame's own Scenes. Name the seam in the shot sequence; the recipe is in the catalog, not a single `../hyperframes-animation/rules/` id.
 
-- **zoom-through / inverse zoom-through** — a within-scene swap on the Z-axis; forward reads "progressing through", inverse reads "arriving at" (payoff). → `cut-catalog.md`
-- **cut-the-curve** — a scene-to-scene cut where both sides move the same direction at matched velocity. → `cut-catalog.md`
-- **waterfall cut** — cut-the-curve at word granularity, a wave across a text-to-text seam. → `cut-catalog.md`
+- **zoom-through / inverse zoom-through** — a within-scene swap on the Z-axis; forward reads "progressing through", inverse reads "arriving at" (payoff). → `../aiflow-build-frame-html/references/cut-catalog.md`
+- **cut-the-curve** — a scene-to-scene cut where both sides move the same direction at matched velocity. → `../aiflow-build-frame-html/references/cut-catalog.md`
+- **waterfall cut** — cut-the-curve at word granularity, a wave across a text-to-text seam. → `../aiflow-build-frame-html/references/cut-catalog.md`
 
 ## Emphasis / marker
 
@@ -119,11 +119,11 @@ The fix for both is the same: **stagger element reveals in time with the script*
 
 ## 4. Internal seams are velocity-matched cuts
 
-When a frame has an internal seam — a within-scene swap, a Scene-to-Scene cut, a text-to-text line change — make it a **velocity-matched cut**, not a hard slideshow cut: cut at peak velocity, match direction and speed on both sides. The catalog (the four techniques, the blur logic, and which to use when) is `cut-catalog.md`; the moves are listed under **Seam cuts** in Part 1.
+When a frame has an internal seam — a within-scene swap, a Scene-to-Scene cut, a text-to-text line change — make it a **velocity-matched cut**, not a hard slideshow cut: cut at peak velocity, match direction and speed on both sides. The catalog (the four techniques, the blur logic, and which to use when) is `../aiflow-build-frame-html/references/cut-catalog.md`; the moves are listed under **Seam cuts** in Part 1.
 
 ## One-line summary
 
-Smooth long-tail (`power3`) over bouncy; reveal sequentially in the back ~50% timed to the VO (not dumped in the first 25%); no lazy breathing and no bad slow pan/push — prefer stillness, with subtle jitter as the only aliveness; cut at peak velocity with matched direction/speed (→ `cut-catalog.md`).
+Smooth long-tail (`power3`) over bouncy; reveal sequentially in the back ~50% timed to the VO (not dumped in the first 25%); no lazy breathing and no bad slow pan/push — prefer stillness, with subtle jitter as the only aliveness; cut at peak velocity with matched direction/speed (→ `../aiflow-build-frame-html/references/cut-catalog.md`).
 
 ---
 
@@ -135,7 +135,7 @@ The frame is a **paused GSAP timeline seeked frame-by-frame**, so some "continuo
 - **No randomness or wall-clock** — no `Math.random` particle fields, no `Date.now` drift. Every render must be identical; name deterministic motion only (stagger and any variation derive from the element index).
 - **Entrances use `fromTo`** — state the from-state explicitly so a seek to `t=0` lands the element correctly; never rely on a CSS-hidden start (it renders visible before the tween claims it, and flickers under seek).
 - **No CSS `transition` / `@keyframes` for motion** — CSS animation runs on the browser clock, independent of the HF seek clock; it desyncs and flickers. Drive all motion inside the paused GSAP timeline.
-- **Entrance + sequential reveal only — no mid-video exit.** The frame unmounts via the harness transition; that injected `transition_in` **is** the exit. Exit motion belongs only to the final frame. (Worker-built seam cuts in `cut-catalog.md` are within-frame, not the frame's exit.)
+- **Entrance + sequential reveal only — no mid-video exit.** The frame unmounts via the harness transition; that injected `transition_in` **is** the exit. Exit motion belongs only to the final frame. (Worker-built seam cuts in `../aiflow-build-frame-html/references/cut-catalog.md` are within-frame, not the frame's exit.)
 
 ## Forbidden — the failure modes
 
@@ -153,4 +153,4 @@ The frame is a **paused GSAP timeline seeked frame-by-frame**, so some "continuo
 > Scene 2 (1.0–3.0s): as the VO names each step, five mechanism nodes reveal **sequentially** via **cluster→outward expansion** (`center-outward-expansion`), then a **value-scaled counter** (`counting-dynamic-scale`) ticks up beneath them — the back-half reveal, timed to the script, not dumped at t=0.
 > Scene 3 (3.0–4.2s): hold on the result; **keyword glow** (`asr-keyword-glow`) lands on the payoff word as the VO says it; settles and holds still — at most **subtle jitter** (`sine-wave-loop`, low amplitude) keeps it alive; no breathing, no drift.
 
-Name the move + its rule id (or `cut-catalog.md` for a seam cut) per scene; let the worker pick curves, ms, and stagger — defaulting to `power3`.
+Name the move + its rule id (or `../aiflow-build-frame-html/references/cut-catalog.md` for a seam cut) per scene; let the worker pick curves, ms, and stagger — defaulting to `power3`.

@@ -6,15 +6,14 @@ Runs `npx hyperframes init <data-dir>/<name> --non-interactive ...`, then writes
 BRIEF.md from CLI fields (no interactive brief questions), writes --topic to
 capture/extracted/visible-text.txt, writes capture/extracted/tokens.json
 (title=topic, description=intent, empty colors/fonts), and when --preset is set
-runs `node build-frame.mjs --preset <name> --videodir <project>` (→ frame.md),
-then invokes `/aiflow-build-storyboard` (→ STORYBOARD.md) and
-`/aiflow-build-frame` (→ compositions/frames/*.html).
+runs `node build-frame.mjs --preset <name> --videodir <project>` (→ frame.md).
 
-Debug / sample run (edit flags in the wrapper):
+Stops at frame.md. Claude skill chain (storyboard → visual → html), assemble,
+and transitions are orchestrated by the wrapper:
 
-  bash build_assets/scripts/run_init_with_brief_example.sh
-  bash build_assets/scripts/run_init_with_brief_example.sh --dry-run
-  bash build_assets/scripts/run_init_with_brief_example.sh --data-dir /tmp/videos
+  bash build_assets/scripts/run_aiflow_video_pipeline.sh
+  bash build_assets/scripts/run_aiflow_video_pipeline.sh --dry-run
+  bash build_assets/scripts/run_aiflow_video_pipeline.sh --data-dir /tmp/videos
 
 Defaults:
   --data-dir /app/videos
@@ -619,166 +618,6 @@ def run_build_frame(project_dir: Path, *, preset: str) -> int:
     return proc.returncode
 
 
-STORYBOARD_PROMPT = """\
-/aiflow-build-storyboard
-
-Work in this HyperFrames project directory. BRIEF.md, frame.md, and
-capture/extracted/visible-text.txt already exist — do not re-init, do not run
-build-frame, audio, or render.
-
-Follow the aiflow-build-storyboard skill: read BRIEF.md (message + intent),
-visible-text.txt, and frame.md; write STORYBOARD.md (outline frames with
-required narrative fields) and SCRIPT.md when narration is needed.
-
-flow is automation → autonomous: post a short frame-sequence summary as a
-heads-up and proceed without waiting for approval. Stop when the skill gate
-passes (STORYBOARD.md exists; SCRIPT.md when narration is needed).
-"""
-
-
-def run_aiflow_build_storyboard(project_dir: Path) -> int:
-    """Invoke Claude Code with /aiflow-build-storyboard to write STORYBOARD.md."""
-    frame_path = project_dir / "frame.md"
-    if not frame_path.is_file():
-        print(
-            f"error: frame.md missing before storyboard step: {frame_path}",
-            file=sys.stderr,
-        )
-        return 1
-
-    if shutil.which("claude") is None:
-        print(
-            "error: claude CLI not found on PATH "
-            "(needed to run /aiflow-build-storyboard)",
-            file=sys.stderr,
-        )
-        return 1
-
-    # -p/--print: non-interactive (print + exit). bypassPermissions: no tool prompts.
-    cmd = [
-        "claude",
-        "--print",
-        "--dangerously-skip-permissions",
-        "--permission-mode",
-        "bypassPermissions",
-        "--output-format",
-        "text",
-        STORYBOARD_PROMPT,
-    ]
-    print(
-        "+",
-        "claude --print --dangerously-skip-permissions "
-        "--permission-mode bypassPermissions --output-format text <prompt>",
-        file=sys.stderr,
-    )
-    print(
-        "run_aiflow_build_storyboard params:",
-        {
-            "cwd": str(project_dir),
-            "skill": "aiflow-build-storyboard",
-            "frame": str(frame_path),
-        },
-        flush=True,
-    )
-    proc = subprocess.run(cmd, cwd=str(project_dir))
-    if proc.returncode != 0:
-        return proc.returncode
-
-    storyboard_path = project_dir / "STORYBOARD.md"
-    if not storyboard_path.is_file():
-        print(
-            f"error: /aiflow-build-storyboard finished but STORYBOARD.md missing: "
-            f"{storyboard_path}",
-            file=sys.stderr,
-        )
-        return 1
-    return 0
-
-
-FRAME_PROMPT = """\
-/aiflow-build-frame
-
-Work in this HyperFrames project directory. hyperframes.json, frame.md, and an
-outline-stage STORYBOARD.md already exist — do not re-init, do not invent a
-storyboard, do not run audio, assemble index, or render.
-
-Follow the aiflow-build-frame skill: Part 1 enrich STORYBOARD.md with time-coded
-shot sequences (skip sketch; autonomous), then Part 2 dispatch per-frame workers
-to write compositions/frames/*.html and mark each frame animated.
-
-flow is automation → autonomous: proceed without waiting for sketch confirmation.
-Stop when the skill gate passes (every frame status: animated).
-"""
-
-
-def run_aiflow_build_frame(project_dir: Path) -> int:
-    """Invoke Claude Code with /aiflow-build-frame to write frame HTML."""
-    frame_path = project_dir / "frame.md"
-    storyboard_path = project_dir / "STORYBOARD.md"
-    if not frame_path.is_file():
-        print(
-            f"error: frame.md missing before frame step: {frame_path}",
-            file=sys.stderr,
-        )
-        return 1
-    if not storyboard_path.is_file():
-        print(
-            f"error: STORYBOARD.md missing before frame step: {storyboard_path}",
-            file=sys.stderr,
-        )
-        return 1
-
-    if shutil.which("claude") is None:
-        print(
-            "error: claude CLI not found on PATH "
-            "(needed to run /aiflow-build-frame)",
-            file=sys.stderr,
-        )
-        return 1
-
-    # -p/--print: non-interactive (print + exit). bypassPermissions: no tool prompts.
-    cmd = [
-        "claude",
-        "--print",
-        "--dangerously-skip-permissions",
-        "--permission-mode",
-        "bypassPermissions",
-        "--output-format",
-        "text",
-        FRAME_PROMPT,
-    ]
-    print(
-        "+",
-        "claude --print --dangerously-skip-permissions "
-        "--permission-mode bypassPermissions --output-format text <prompt>",
-        file=sys.stderr,
-    )
-    print(
-        "run_aiflow_build_frame params:",
-        {
-            "cwd": str(project_dir),
-            "skill": "aiflow-build-frame",
-            "frame": str(frame_path),
-            "storyboard": str(storyboard_path),
-        },
-        flush=True,
-    )
-    proc = subprocess.run(cmd, cwd=str(project_dir))
-    if proc.returncode != 0:
-        return proc.returncode
-
-    frames_dir = project_dir / "compositions" / "frames"
-    html_frames = sorted(frames_dir.glob("*.html")) if frames_dir.is_dir() else []
-    if not html_frames:
-        print(
-            f"error: /aiflow-build-frame finished but no compositions/frames/*.html: "
-            f"{frames_dir}",
-            file=sys.stderr,
-        )
-        return 1
-    return 0
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     epilog = """
 aspect ↔ resolution ↔ destination
@@ -969,17 +808,9 @@ def main(argv: list[str] | None = None) -> int:
                 if preset
                 else None
             ),
-            "build_storyboard": (
-                "claude --print --dangerously-skip-permissions "
-                "--permission-mode bypassPermissions --output-format text "
-                "/aiflow-build-storyboard  # cwd=project"
-                if preset
-                else None
-            ),
-            "build_aiflow_frame": (
-                "claude --print --dangerously-skip-permissions "
-                "--permission-mode bypassPermissions --output-format text "
-                "/aiflow-build-frame  # cwd=project"
+            "next": (
+                "run_aiflow_build_skills.py --skill {storyboard,visual,html} "
+                "→ assemble-index.mjs → transitions.mjs"
                 if preset
                 else None
             ),
@@ -1003,13 +834,7 @@ def main(argv: list[str] | None = None) -> int:
         "write tokens.json",
     ]
     if preset:
-        step_names.extend(
-            [
-                f"build-frame.mjs (--preset {preset})",
-                "aiflow-build-storyboard → STORYBOARD.md",
-                "aiflow-build-frame → compositions/frames",
-            ]
-        )
+        step_names.append(f"build-frame.mjs (--preset {preset})")
     timings: list[dict[str, object]] = []
     steps = StepTracker(step_names, timings)
     pipeline_t0 = time.monotonic()
@@ -1170,26 +995,6 @@ def main(argv: list[str] | None = None) -> int:
                     return rc
                 ok[0] = True
 
-            with steps.next() as ok:
-                rc = run_aiflow_build_storyboard(project_dir)
-                if rc != 0:
-                    print(
-                        f"error: aiflow-build-storyboard failed with exit code {rc}",
-                        file=sys.stderr,
-                    )
-                    return rc
-                ok[0] = True
-
-            with steps.next() as ok:
-                rc = run_aiflow_build_frame(project_dir)
-                if rc != 0:
-                    print(
-                        f"error: aiflow-build-frame failed with exit code {rc}",
-                        file=sys.stderr,
-                    )
-                    return rc
-                ok[0] = True
-
         steps.check_complete()
         pipeline_ok = True
     finally:
@@ -1197,13 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
         log_timing_summary(timings, total_seconds=total_seconds, ok=pipeline_ok)
 
     if args.json:
-        storyboard_path = project_dir / "STORYBOARD.md"
-        frames_dir = project_dir / "compositions" / "frames"
-        html_frames = (
-            sorted(str(p) for p in frames_dir.glob("*.html"))
-            if frames_dir.is_dir()
-            else []
-        )
+        frame_path = project_dir / "frame.md"
         print(
             json.dumps(
                 {
@@ -1213,11 +1012,7 @@ def main(argv: list[str] | None = None) -> int:
                     "visible_text": str(visible_text_path),
                     "tokens": str(tokens_path),
                     "preset": preset,
-                    "frame": str(project_dir / "frame.md") if preset else None,
-                    "storyboard": (
-                        str(storyboard_path) if storyboard_path.is_file() else None
-                    ),
-                    "frames": html_frames if preset else None,
+                    "frame": str(frame_path) if preset and frame_path.is_file() else None,
                     "timings": {
                         "steps": timings,
                         "total_seconds": round(total_seconds, 3),

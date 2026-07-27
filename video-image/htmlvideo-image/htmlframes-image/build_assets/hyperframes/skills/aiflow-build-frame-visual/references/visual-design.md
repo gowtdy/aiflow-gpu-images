@@ -1,6 +1,6 @@
 # Visual design — faceless-explainer per-frame shot method
 
-> The method behind **Step 4 (Frame visual design)**. You (the orchestrator) read it to **enrich `STORYBOARD.md` frames in place** — story-design wrote the skeleton (each frame's `scene`, `voiceover`, `transition_in`, the narrative fields, and optionally a candidate blueprint id); you add how each frame **looks and moves**. The unit you write per frame is a **time-coded shot sequence** — a shot directed across its whole duration, not a static slide. You write **no HTML** (that's the frame workers). Because the explainer is **faceless, every visual is invented** — typography, abstract graphics, diagrams, data-viz — so you **design** the visual elements rather than select captured assets (there is no `capture/` to read). `frame.md` is your palette/type truth by role. Layout is a compact vocabulary in this file (the **Layout** section below), stated inline per Scene; motion vocabulary + the motion doctrine + the seek-safe core → `motion-language.md`; the proven shapes → `../hyperframes-animation/blueprints-index.md` + `blueprints/<id>.md`; concrete rules resolve in Step 5 from this skill's local `../hyperframes-animation/rules/`. Adding palette theory or a generic font rule here? Wrong home — `frame.md` + `hyperframes-creative`.
+> The method behind **`/aiflow-build-frame-visual`**. You (the orchestrator) read it to **enrich `STORYBOARD.md` frames in place** — story-design wrote the skeleton (each frame's `scene`, `voiceover`, `transition_in`, the narrative fields, and optionally a candidate blueprint id); you add how each frame **looks and moves**. The unit you write per frame is a **time-coded shot sequence** — a shot directed across its whole duration, not a static slide. You write **no HTML** (that's `/aiflow-build-frame-html`). Because the explainer is **faceless, every visual is invented** — typography, abstract graphics, diagrams, data-viz — so you **design** the visual elements rather than select captured assets (there is no `capture/` to read). `frame.md` is your palette/type truth by role. Layout is a compact vocabulary in this file (the **Layout** section below), stated inline per Scene; motion vocabulary + the motion doctrine + the seek-safe core → `motion-language.md`; the proven shapes → `../hyperframes-animation/blueprints-index.md` + `blueprints/<id>.md`; concrete rules resolve in `/aiflow-build-frame-html` from that skill's local `../hyperframes-animation/rules/`. Adding palette theory or a generic font rule here? Wrong home — `frame.md` + `hyperframes-creative`.
 
 ## The unit is a time-coded shot sequence
 
@@ -67,7 +67,7 @@ The lightweight tags:
 
 **Layout is stated INLINE in each Scene line** — name the template, density, depth, and hierarchy as part of "where it sits" (`Centered, ~50% of frame`, `asymmetric 60/40, 3 depth layers`), drawing on the **Layout** vocabulary below; never write px / scale / shadow recipes (the worker writes those).
 
-**Motion is named INLINE in each Scene line** — name the move from `motion-language.md`'s vocabulary (`per-word reveal`, `layer-reveal`, `count-up`, `glow blooms`) and let it settle on a long-tail curve (`power3` default — smooth beats bouncy; see `motion-language.md`). Never write ease curves / ms / stagger (those resolve in Step 5 from this skill's local `../hyperframes-animation/rules/`).
+**Motion is named INLINE in each Scene line** — name the move from `motion-language.md`'s vocabulary (`per-word reveal`, `layer-reveal`, `count-up`, `glow blooms`) and let it settle on a long-tail curve (`power3` default — smooth beats bouncy; see `motion-language.md`). Never write ease curves / ms / stagger (those resolve in `/aiflow-build-frame-html` from that skill's local `../hyperframes-animation/rules/`).
 
 ## Inventing the visual — diagrams, type, data-viz
 
@@ -125,10 +125,10 @@ The bottom ~17% of the canvas is reserved for the caption pill. Plan every frame
 | the proven shapes + role→blueprint menu + how to pick                           | `../hyperframes-animation/blueprints-index.md` → `blueprints/<id>.md`                        |
 | motion — shot model, vocabulary, holds, idle budget, stillness, seek-safe       | `motion-language.md` (local)                                                                 |
 | layout — framing, density, depth, hierarchy, inventing the visual, caption band | the **Layout** + **Inventing the visual** sections in this file                              |
-| concrete eases / ms / stagger + rule recipe bodies (Step 5)                     | local `../hyperframes-animation/rules/` (the frame worker reads it; you don't)               |
+| concrete eases / ms / stagger + rule recipe bodies (`/aiflow-build-frame-html`) | that skill's `../hyperframes-animation/rules/` (the frame worker reads it; you don't)        |
 | palette + type tokens                                                           | the project's `frame.md`; basics → `hyperframes-creative` `house-style.md` / `typography.md` |
 | "produced, not generated" foreground density                                    | `hyperframes-creative/references/video-composition.md`                                       |
-| within-frame cuts / seams (zoom-through · cut-the-curve · waterfall)            | `cut-catalog.md` (the worker builds them inside the composition)                             |
+| within-frame cuts / seams (zoom-through · cut-the-curve · waterfall)            | `../aiflow-build-frame-html/references/cut-catalog.md` (the worker builds them)              |
 | transitions                                                                     | story-design owns `transition_in`; you don't touch it                                        |
 
 ## Before you finish — checklist

@@ -1,6 +1,6 @@
-# Frame worker — aiflow-build-frame per-frame composition author
+# Frame worker — aiflow-build-frame-html per-frame composition author
 
-> You build **one** frame's composition HTML and nothing else. You run N-up, one frame each — siblings build the others. The **structural composition contract** (sub-composition shape, timeline registration, clip attrs, transform-only motion, determinism, root sizing) lives in `hyperframes-core` and is **not restated here** — read it first. This file carries only what's specific to an aiflow-build-frame frame. Tempted to add a generic GSAP / timeline rule here? Wrong home — it belongs in `hyperframes-core`.
+> You build **one** frame's composition HTML and nothing else. You run N-up, one frame each — siblings build the others. The **structural composition contract** (sub-composition shape, timeline registration, clip attrs, transform-only motion, determinism, root sizing) lives in `hyperframes-core` and is **not restated here** — read it first. This file carries only what's specific to an aiflow-build-frame-html frame. Tempted to add a generic GSAP / timeline rule here? Wrong home — it belongs in `hyperframes-core`.
 
 **INPUT** — your dispatch context provides:
 
@@ -43,7 +43,7 @@ These belong to other steps — touching them collides with a sibling or breaks 
 
 ## Frame constraints
 
-Generic seek-safety + structure live in `hyperframes-core` (read it; not restated). These are the **aiflow-build-frame deltas** (invented visuals / caption keep-out), each load-bearing:
+Generic seek-safety + structure live in `hyperframes-core` (read it; not restated). These are the **aiflow-build-frame-html deltas** (invented visuals / caption keep-out), each load-bearing:
 
 - **Caption keep-out — all content in the top ~83%.** A karaoke caption pill owns the bottom ~17% of the canvas. Keep every element (headline, diagram, coined-term card, stats) above `y ≈ 0.83 × height` — compute the pixel cutoff from your canvas (e.g. `≤ 900` on a 1080-tall frame, `≤ 1600` on a 1920-tall portrait). Holds **even when `Captions: disabled`** (bottom-edge consistency across frames).
 - **Fill the content area — especially portrait.** Compose the whole top-83% region; don't float one small cluster mid-frame. Anchor the hero high (~0.2–0.35 × height), flow supporting elements down with rhythm, scale hero type toward full-bleed. (Landscape's region is short, so vertical centering near 0.42 × height is fine.)
