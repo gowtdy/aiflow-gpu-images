@@ -22,7 +22,7 @@ SKILLS_SCRIPT="${SCRIPT_DIR}/run_aiflow_build_skills.py"
 ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 TRANSITIONS_SCRIPT="${SCRIPT_DIR}/transitions.mjs"
 
-NAME="first-video"
+NAME="second-video"
 DATA_DIR="/app/videos"
 PROJECT_DIR="${DATA_DIR}/${NAME}"
 
