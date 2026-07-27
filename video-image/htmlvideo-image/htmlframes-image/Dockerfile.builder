@@ -23,8 +23,32 @@ RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-s
 " \
   && echo "==> [1/6] package.json patched"
 
-RUN echo "==> [2/6] bun install starting (may be quiet during link/postinstall)..." \
-  && bun install --verbose \
+# bun --verbose still goes quiet while hardlinking huge packages
+# (@fontsource/noto-sans-jp ~80MB/2k files, onnxruntime-node ~97MB).
+# Heartbeat + line-buffering so docker build --progress=plain shows liveness.
+RUN echo "==> [2/6] bun install starting..." \
+  && echo "    note: long quiet stretches are normal during hardlink of large tarballs" \
+  && stdbuf -oL -eL bash -c '\
+    set -euo pipefail; \
+    bun install --verbose & \
+    bun_pid=$!; \
+    ( \
+      elapsed=0; \
+      while kill -0 "$bun_pid" 2>/dev/null; do \
+        sleep 15; \
+        elapsed=$((elapsed + 15)); \
+        if kill -0 "$bun_pid" 2>/dev/null; then \
+          echo "==> [2/6] bun install still running (${elapsed}s elapsed)..."; \
+        fi; \
+      done; \
+    ) & \
+    hb_pid=$!; \
+    wait "$bun_pid"; \
+    status=$?; \
+    kill "$hb_pid" 2>/dev/null || true; \
+    wait "$hb_pid" 2>/dev/null || true; \
+    exit "$status"; \
+  ' \
   && echo "==> [2/6] bun install done"
 
 RUN echo "==> [3/6] build parsers / lint / studio-server" \
