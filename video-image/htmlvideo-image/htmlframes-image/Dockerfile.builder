@@ -10,8 +10,11 @@ WORKDIR /app/hyperframes
 
 # Default: npmmirror (China). Override:
 #   docker build --build-arg BUN_REGISTRY=https://registry.npmjs.org ...
+# Debug HTTP spam (may clip BuildKit logs): --build-arg BUN_INSTALL_VERBOSE=1
 ARG BUN_REGISTRY=https://registry.npmmirror.com
+ARG BUN_INSTALL_VERBOSE=0
 ENV BUN_CONFIG_REGISTRY=${BUN_REGISTRY}
+ENV BUN_INSTALL_VERBOSE=${BUN_INSTALL_VERBOSE}
 
 # Local image only builds CLI (+ compile deps). Strip aws-lambda binary
 # packages so bun install does not hit GitHub CDN (ffmpeg-static timeout).
@@ -29,9 +32,8 @@ RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-s
 " \
   && echo "==> [1/6] package.json patched"
 
-# bun --verbose goes quiet while hardlinking huge packages
-# (@fontsource/noto-sans-jp ~80MB/2k files, onnxruntime-node ~97MB).
-# Script streams verbose log + heartbeat: phase/pkg/counts/size/files.
+# No --verbose by default (BuildKit clips at ~200KiB/s). Heartbeat every 15s
+# reports .bun/cache counts + latest package. Debug: BUN_INSTALL_VERBOSE=1.
 RUN chmod +x /tmp/bun-install-with-progress.sh \
   && /tmp/bun-install-with-progress.sh \
   && echo "==> [2/6] bun install done"
