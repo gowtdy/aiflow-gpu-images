@@ -47,8 +47,19 @@ RUN echo "==> [4/6] build core" \
   && bun run --filter @hyperframes/core build \
   && echo "==> [4/6] done"
 
-RUN echo "==> [5/6] build engine / producer / player / studio / sdk" \
-  && bun run --filter '@hyperframes/{engine,producer,player,studio,sdk}' build \
+# Sequential (not one parallel filter): BuildKit error summaries clip at the
+# tail — a noisy studio success can hide the real failing package. Sequential
+# also lowers peak RAM (studio DTS + producer fonts in parallel often OOM).
+RUN echo "==> [5/6] build engine" \
+  && bun run --filter @hyperframes/engine build \
+  && echo "==> [5/6] build producer" \
+  && bun run --filter @hyperframes/producer build \
+  && echo "==> [5/6] build player" \
+  && bun run --filter @hyperframes/player build \
+  && echo "==> [5/6] build sdk" \
+  && bun run --filter @hyperframes/sdk build \
+  && echo "==> [5/6] build studio" \
+  && bun run --filter @hyperframes/studio build \
   && echo "==> [5/6] done"
 
 RUN echo "==> [6/6] build cli" \
