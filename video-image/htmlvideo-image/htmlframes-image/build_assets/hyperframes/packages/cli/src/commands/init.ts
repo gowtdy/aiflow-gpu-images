@@ -3,6 +3,7 @@
 // This branch only repointed the scaffolded npm scripts; the refactor is its
 // own task.
 // fallow-ignore-file complexity
+import { failCommand, finishCommand } from "../utils/commandResult.js";
 import { defineCommand, runCommand } from "citty";
 import type { Example } from "./_examples.js";
 
@@ -45,7 +46,8 @@ import {
 } from "../templates/generators.js";
 import { fetchRemoteTemplate } from "../templates/remote.js";
 import { trackInitTemplate } from "../telemetry/events.js";
-import { hasFFmpeg } from "../whisper/manager.js";
+import { DEFAULT_MODEL, hasFFmpeg } from "../whisper/manager.js";
+import { initialModelForLanguage } from "../whisper/transcribe.js";
 import { findFFmpeg, findFFprobe, getFFmpegInstallHint } from "../browser/ffmpeg.js";
 import { VERSION } from "../version.js";
 import {
@@ -81,6 +83,22 @@ const TAILWIND_BROWSER_SRC = `https://cdn.jsdelivr.net/npm/@tailwindcss/browser@
 const TAILWIND_BROWSER_INTEGRITY =
   "sha384-v5YF9xS+gLRWdvrQ0u/WRbCkjSIH0NjHIPe8tBL1ZRrmI7PiSH6LLdzs0aAIMCuh";
 
+export function resolveVideoDurationSeconds({
+  streamDuration,
+  frameDuration,
+  formatDuration,
+}: {
+  streamDuration: number;
+  frameDuration: number;
+  formatDuration: number;
+}): number {
+  return (
+    [streamDuration, frameDuration, formatDuration].find(
+      (duration) => Number.isFinite(duration) && duration > 0,
+    ) ?? DEFAULT_META.durationSeconds
+  );
+}
+
 // ---------------------------------------------------------------------------
 // ffprobe helper — shells out to ffprobe to avoid engine dependency
 // ---------------------------------------------------------------------------
@@ -103,6 +121,8 @@ function probeVideo(filePath: string): VideoMeta | undefined {
         height?: number;
         r_frame_rate?: string;
         avg_frame_rate?: string;
+        duration?: string;
+        nb_frames?: string;
       }[];
       format?: { duration?: string };
     } = JSON.parse(raw);
@@ -124,11 +144,18 @@ function probeVideo(filePath: string): VideoMeta | undefined {
       }
     }
 
-    const durationStr = parsed.format?.duration;
-    const durationSeconds = durationStr !== undefined ? parseFloat(durationStr) : 5;
+    const streamDuration = parseFloat(videoStream.duration ?? "");
+    const frameCount = parseInt(videoStream.nb_frames ?? "", 10);
+    const frameDuration = Number.isFinite(frameCount) && fps > 0 ? frameCount / fps : NaN;
+    const formatDuration = parseFloat(parsed.format?.duration ?? "");
+    const durationSeconds = resolveVideoDurationSeconds({
+      streamDuration,
+      frameDuration,
+      formatDuration,
+    });
 
     return {
-      durationSeconds: Number.isNaN(durationSeconds) ? 5 : durationSeconds,
+      durationSeconds,
       width: videoStream.width ?? 1920,
       height: videoStream.height ?? 1080,
       fps,
@@ -407,7 +434,7 @@ async function handleVideoFile(
         });
         if (clack.isCancel(transcode)) {
           clack.cancel("Setup cancelled.");
-          process.exit(0);
+          finishCommand(0);
         }
         shouldTranscode = transcode === "yes";
       }
@@ -711,7 +738,7 @@ export default defineCommand({
           `The --template flag was renamed to --example. Example:\n  npx hyperframes init ${args.name ?? "my-video"} --example "${args.template}"`,
         ),
       );
-      process.exit(1);
+      failCommand();
     }
     if (args["video-legacy"] !== undefined) {
       console.error(
@@ -719,12 +746,12 @@ export default defineCommand({
           `The -V short flag no longer maps to --video. Use --video (or -v). Example:\n  npx hyperframes init ${args.name ?? "my-video"} --video "${args["video-legacy"]}"`,
         ),
       );
-      process.exit(1);
+      failCommand();
     }
     const exampleFlag = args.example;
     if (exampleFlag?.startsWith("-")) {
       console.error(c.error(`--example requires a value; received flag "${exampleFlag}" instead.`));
-      process.exit(1);
+      failCommand();
     }
     const videoFlag = args.video;
     const audioFlag = args.audio;
@@ -744,6 +771,10 @@ export default defineCommand({
     const nonInteractive = args["non-interactive"] === true;
     const modelFlag = args.model;
     const languageFlag = args.language;
+    const initialTranscriptionModel = initialModelForLanguage(
+      modelFlag ?? DEFAULT_MODEL,
+      languageFlag,
+    );
     const interactive = !nonInteractive && process.stdout.isTTY === true;
 
     if (skipSkillsFlagIgnored) {
@@ -766,7 +797,7 @@ export default defineCommand({
               `(or aliases 1080p, 4k, uhd, 1080p-square, square-1080p, 4k-square).`,
           ),
         );
-        process.exit(1);
+        failCommand();
       }
     }
 
@@ -781,7 +812,7 @@ export default defineCommand({
               "For an empty starter project, pass --example blank explicitly.",
           ),
         );
-        process.exit(1);
+        failCommand();
       }
 
       const templateId = exampleFlag ?? "blank";
@@ -790,12 +821,12 @@ export default defineCommand({
 
       if (existsSync(destDir) && readdirSync(destDir).length > 0) {
         console.error(c.error(`Directory already exists and is not empty: ${name}`));
-        process.exit(1);
+        failCommand();
       }
 
       if (videoFlag && audioFlag) {
         console.error(c.error("Cannot use --video and --audio together"));
-        process.exit(1);
+        failCommand();
       }
 
       // Validate source files before creating destDir so a failed run does
@@ -804,12 +835,12 @@ export default defineCommand({
       const videoPath = videoFlag ? resolve(videoFlag) : undefined;
       if (videoPath && !existsSync(videoPath)) {
         console.error(c.error(`Video file not found: ${videoFlag}`));
-        process.exit(1);
+        failCommand();
       }
       const audioPath = audioFlag ? resolve(audioFlag) : undefined;
       if (audioPath && !existsSync(audioPath)) {
         console.error(c.error(`Audio file not found: ${audioFlag}`));
-        process.exit(1);
+        failCommand();
       }
 
       mkdirSync(destDir, { recursive: true });
@@ -841,7 +872,7 @@ export default defineCommand({
         try {
           const { ensureWhisper, ensureModel } = await import("../whisper/manager.js");
           await ensureWhisper();
-          await ensureModel(modelFlag);
+          await ensureModel(initialTranscriptionModel);
           console.log("Transcribing...");
           const { transcribe: runTranscribe } = await import("../whisper/transcribe.js");
           const result = await runTranscribe(sourceFilePath, destDir, {
@@ -875,7 +906,7 @@ export default defineCommand({
           ),
         );
         console.error(c.dim("Use --example blank for offline use."));
-        process.exit(1);
+        failCommand();
       }
       trackInitTemplate(templateId, { tailwind });
       const transcriptFile = resolve(destDir, "transcript.json");
@@ -948,7 +979,7 @@ export default defineCommand({
       });
       if (clack.isCancel(nameResult)) {
         clack.cancel("Setup cancelled.");
-        process.exit(0);
+        finishCommand(0);
       }
       name = nameResult;
     }
@@ -962,7 +993,7 @@ export default defineCommand({
       });
       if (clack.isCancel(overwrite) || !overwrite) {
         clack.cancel("Setup cancelled.");
-        process.exit(0);
+        finishCommand(0);
       }
     }
 
@@ -976,7 +1007,7 @@ export default defineCommand({
       if (!existsSync(videoPath)) {
         clack.log.error(`File not found: ${videoFlag}`);
         clack.cancel("Setup cancelled.");
-        process.exit(1);
+        failCommand();
       }
       mkdirSync(destDir, { recursive: true });
       sourceFilePath = videoPath;
@@ -988,7 +1019,7 @@ export default defineCommand({
       if (!existsSync(audioPath)) {
         clack.log.error(`File not found: ${audioFlag}`);
         clack.cancel("Setup cancelled.");
-        process.exit(1);
+        failCommand();
       }
       mkdirSync(destDir, { recursive: true });
       sourceFilePath = audioPath;
@@ -1020,7 +1051,7 @@ export default defineCommand({
           await ensureWhisper({
             onProgress: (msg) => spin.message(msg),
           });
-          await ensureModel(modelFlag, {
+          await ensureModel(initialTranscriptionModel, {
             onProgress: (msg) => spin.message(msg),
           });
 
@@ -1062,7 +1093,7 @@ export default defineCommand({
       });
       if (clack.isCancel(templateResult)) {
         clack.cancel("Setup cancelled.");
-        process.exit(0);
+        finishCommand(0);
       }
       templateId = templateResult;
     }
@@ -1093,7 +1124,7 @@ export default defineCommand({
       clack.log.error(
         `${err instanceof Error ? err.message : err}\n${c.dim("Use --example blank for offline use.")}`,
       );
-      process.exit(1);
+      failCommand();
     }
     trackInitTemplate(templateId, { tailwind });
 

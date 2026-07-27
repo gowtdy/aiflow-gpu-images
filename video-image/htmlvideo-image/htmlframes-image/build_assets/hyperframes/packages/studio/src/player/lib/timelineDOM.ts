@@ -11,6 +11,7 @@
 import type { TimelineElement } from "../store/playerStore";
 import type { ClipManifestClip } from "./playbackTypes";
 import { resolveCssStackingContextId } from "@hyperframes/core/runtime/stacking-context";
+import { readClipTiming } from "@hyperframes/core/composition-contract";
 import {
   resolveMediaElement,
   applyMediaMetadataFromElement,
@@ -54,7 +55,6 @@ export {
   autoHealMissingCompositionIds,
   setPreviewMediaMuted,
   setPreviewPlaybackRate,
-  shouldMutePreviewAudio,
   resolveIframe,
   buildMissingCompositionElements,
 } from "./timelineIframeHelpers";
@@ -110,6 +110,7 @@ export function createTimelineElementFromManifestClip(params: {
     id: identity.id,
     label,
     key: identity.key,
+    kind: clip.kind,
     tag: resolveClipTag(clip),
     start: clip.start,
     duration: clip.duration,
@@ -128,6 +129,8 @@ export function createTimelineElementFromManifestClip(params: {
     selector,
     selectorIndex,
     sourceFile,
+    playbackStart: clip.playbackStart,
+    playbackRate: clip.playbackRate,
   };
 
   if (hostEl) {
@@ -139,6 +142,8 @@ export function createTimelineElementFromManifestClip(params: {
   }
   if (clip.assetUrl) entry.src = clip.assetUrl;
   if (clip.kind === "composition" && clip.compositionId) {
+    entry.playbackStart ??= 0;
+    entry.playbackRate ??= 1;
     let resolvedSrc = clip.compositionSrc;
     if (!resolvedSrc) {
       hostEl =
@@ -255,24 +260,20 @@ export function parseTimelineFromDOM(doc: Document, rootDuration: number): Timel
     if (node === rootComp) return;
     if (isTimelineIgnoredElement(node)) return;
     const el = node as HTMLElement;
-    const startStr = el.getAttribute("data-start");
-    if (startStr == null) return;
-    const start = parseFloat(startStr);
-    if (isNaN(start)) return;
+    const timing = readClipTiming(el);
+    const start = timing.start;
+    if (start == null) return;
     if (Number.isFinite(rootDuration) && rootDuration > 0 && start >= rootDuration) return;
 
     const tagLower = el.tagName.toLowerCase();
-    let dur = 0;
-    const durStr = el.getAttribute("data-duration");
-    if (durStr != null) dur = parseFloat(durStr);
-    if (isNaN(dur) || dur <= 0) dur = Math.max(0, rootDuration - start);
+    let dur = timing.duration ?? 0;
+    if (dur <= 0) dur = Math.max(0, rootDuration - start);
     if (Number.isFinite(rootDuration) && rootDuration > 0) {
       dur = Math.min(dur, Math.max(0, rootDuration - start));
     }
     if (!Number.isFinite(dur) || dur <= 0) return;
 
-    const trackStr = el.getAttribute("data-track-index");
-    const track = trackStr != null ? parseInt(trackStr, 10) : trackCounter++;
+    const track = timing.trackSource === "default" ? trackCounter++ : timing.trackIndex;
     // fallow-ignore-next-line code-duplication
     const compId = el.getAttribute("data-composition-id");
     const selector = getTimelineElementSelector(el);
@@ -296,10 +297,18 @@ export function parseTimelineFromDOM(doc: Document, rootDuration: number): Timel
       id: identity.id,
       label,
       key: identity.key,
+      kind:
+        compId && compId !== rootComp?.getAttribute("data-composition-id")
+          ? "composition"
+          : tagLower === "video" || tagLower === "audio"
+            ? tagLower
+            : tagLower === "img"
+              ? "image"
+              : "element",
       tag: tagLower,
       start,
       duration: dur,
-      track: isNaN(track) ? 0 : track,
+      track,
       domId: el.id || undefined,
       hfId: el.getAttribute("data-hf-id") || undefined,
       selector,
@@ -311,13 +320,13 @@ export function parseTimelineFromDOM(doc: Document, rootDuration: number): Timel
     };
 
     const mediaEl = resolveMediaElement(el);
+    applyMediaMetadataFromElement(entry, el);
     if (mediaEl) {
       if (mediaEl.tagName === "IMG") {
         entry.tag = "img";
       }
       const vol = el.getAttribute("data-volume") ?? mediaEl.getAttribute("data-volume");
       if (vol) entry.volume = parseFloat(vol);
-      applyMediaMetadataFromElement(entry, el);
       // Override AFTER the helper (which sets the raw relative attribute) so the
       // resolved absolute URL wins — the Studio can then fetch the asset
       // regardless of whether the attribute value was relative or absolute.
@@ -347,6 +356,10 @@ export function parseTimelineFromDOM(doc: Document, rootDuration: number): Timel
         entry.src = innerVideo.getAttribute("src") || undefined;
         entry.tag = "video";
       }
+    }
+    if (entry.kind === "composition") {
+      entry.playbackStart ??= 0;
+      entry.playbackRate ??= 1;
     }
 
     els.push(entry);

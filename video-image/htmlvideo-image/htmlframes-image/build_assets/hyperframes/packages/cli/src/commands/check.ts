@@ -3,6 +3,7 @@ import type { Example } from "./_examples.js";
 import { parseAt } from "./layout.js";
 import { c } from "../ui/colors.js";
 import { normalizeErrorMessage } from "../utils/errorMessage.js";
+import { setCommandExitCode } from "../utils/commandResult.js";
 import { formatLayoutIssue } from "../utils/layoutAudit.js";
 import { resolveProject, type ProjectDir } from "../utils/project.js";
 import { withMeta } from "../utils/updateCheck.js";
@@ -98,6 +99,12 @@ export function createCheckCommand(
         description: "Exit non-zero on warnings too",
         default: false,
       },
+      proxy: {
+        type: "boolean",
+        description:
+          "Auto-transcode browser-hostile video codecs (default: hyperframes.json media.autoProxy, which defaults on)",
+        default: undefined,
+      },
       snapshots: {
         type: "boolean",
         description: "Save the five contrast-pass PNGs under snapshots/",
@@ -129,7 +136,7 @@ export function createCheckCommand(
         } else {
           printHumanReport(report);
         }
-        process.exitCode = checkExitCode(report);
+        setCommandExitCode(checkExitCode(report));
       } catch (error) {
         const message = normalizeErrorMessage(error);
         if (asJson) {
@@ -139,7 +146,7 @@ export function createCheckCommand(
         } else {
           console.error(`${c.error("✗")} Check failed: ${message}`);
         }
-        process.exitCode = 1;
+        setCommandExitCode(1);
       }
     },
   });
@@ -161,6 +168,7 @@ function parseCheckOptions(args: Record<string, unknown>): CheckOptions {
     snapshots: args.snapshots === true,
     captionZone: parseCaptionZone(args["caption-zone"]),
     frameCheck: parseFrameCheck(args["frame-check"]),
+    autoProxy: args.proxy as boolean | undefined,
   };
 }
 

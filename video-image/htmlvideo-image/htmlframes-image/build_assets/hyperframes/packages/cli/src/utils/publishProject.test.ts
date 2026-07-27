@@ -21,11 +21,13 @@ vi.mock("./projectLink.js", () => ({
 }));
 
 import {
+  buildPublishFileMap,
   createPublishArchive,
   getPublishApiBaseUrl,
   localizeExternalAssets,
   publishProjectArchive,
   uploadTimeoutMs,
+  zipPublishFileMap,
 } from "./publishProject.js";
 
 function makeProjectDir(): string {
@@ -202,6 +204,119 @@ describe("createPublishArchive", () => {
 
       expect(archive.fileCount).toBe(2);
       expect(archive.buffer.byteLength).toBeGreaterThan(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips root render outputs but keeps same-named nested source directories", () => {
+    const dir = makeProjectDir();
+    try {
+      writeFileSync(join(dir, "index.html"), "<html></html>", "utf-8");
+      mkdirSync(join(dir, "renders"));
+      writeFileSync(join(dir, "renders", "old.mp4"), "render-output", "utf-8");
+      mkdirSync(join(dir, "snapshots"));
+      writeFileSync(join(dir, "snapshots", "frame.png"), "snapshot-output", "utf-8");
+      mkdirSync(join(dir, "assets", "renders"), { recursive: true });
+      writeFileSync(join(dir, "assets", "renders", "source.mp4"), "source", "utf-8");
+
+      const zip = new AdmZip(createPublishArchive(dir).buffer);
+      const entries = zip.getEntries().map((entry) => entry.entryName);
+
+      expect(entries).toContain("assets/renders/source.mp4");
+      expect(entries).not.toContain("renders/old.mp4");
+      expect(entries).not.toContain("snapshots/frame.png");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("applies gitignore-style rules from .hyperframesignore", () => {
+    const dir = makeProjectDir();
+    try {
+      writeFileSync(join(dir, "index.html"), "<html></html>", "utf-8");
+      mkdirSync(join(dir, "exports"));
+      writeFileSync(join(dir, "exports", "draft.mp4"), "draft", "utf-8");
+      mkdirSync(join(dir, "assets"));
+      writeFileSync(join(dir, "assets", "discard.psd"), "discard", "utf-8");
+      writeFileSync(join(dir, "assets", "keep.psd"), "keep", "utf-8");
+      writeFileSync(
+        join(dir, ".hyperframesignore"),
+        ["# Generated source files", "/exports/", "*.psd", "!assets/keep.psd", ""].join("\n"),
+        "utf-8",
+      );
+
+      const zip = new AdmZip(createPublishArchive(dir).buffer);
+      const entries = zip.getEntries().map((entry) => entry.entryName);
+
+      expect(entries).toContain("assets/keep.psd");
+      expect(entries).not.toContain("exports/draft.mp4");
+      expect(entries).not.toContain("assets/discard.psd");
+      expect(entries).not.toContain(".hyperframesignore");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("allows .hyperframesignore to re-include a default output directory", () => {
+    const dir = makeProjectDir();
+    try {
+      writeFileSync(join(dir, "index.html"), "<html></html>", "utf-8");
+      mkdirSync(join(dir, "snapshots"));
+      writeFileSync(join(dir, "snapshots", "reference.png"), "reference", "utf-8");
+      writeFileSync(join(dir, ".hyperframesignore"), "!/snapshots/\n", "utf-8");
+
+      const zip = new AdmZip(createPublishArchive(dir).buffer);
+      expect(zip.getEntries().map((entry) => entry.entryName)).toContain("snapshots/reference.png");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails clearly when .hyperframesignore excludes index.html", () => {
+    const dir = makeProjectDir();
+    try {
+      writeFileSync(join(dir, "index.html"), "<html></html>", "utf-8");
+      writeFileSync(join(dir, ".hyperframesignore"), "/index.html\n", "utf-8");
+
+      expect(() => createPublishArchive(dir)).toThrow(
+        "Project archive must include index.html at the root. Check that .hyperframesignore does not exclude it.",
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("createPublishArchive (U6 cloud-render regression guard)", () => {
+  // `cloud/render.ts` (`maybeUploadProject`) calls `createPublishArchive`
+  // directly and must never see baked proxies (R2): this pins that
+  // `createPublishArchive` is exactly the thin composition of
+  // `buildPublishFileMap` + `zipPublishFileMap` with no baking hook, and that
+  // a local video asset's original bytes/HTML pass through unmodified.
+  it("keeps a source video byte-identical and excludes proxies from the cloud-render archive", () => {
+    const dir = makeProjectDir();
+    try {
+      writeFileSync(
+        join(dir, "index.html"),
+        `<html><body><video src="clip.mp4"></video></body></html>`,
+        "utf-8",
+      );
+      const originalVideo = Buffer.from("original-video-bytes");
+      writeFileSync(join(dir, "clip.mp4"), originalVideo);
+
+      const direct = createPublishArchive(dir);
+      const composed = zipPublishFileMap(buildPublishFileMap(dir));
+
+      expect(direct.buffer.equals(composed.buffer)).toBe(true);
+      expect(direct.fileCount).toBe(composed.fileCount);
+
+      const zip = new AdmZip(direct.buffer);
+      const entries = zip.getEntries().map((e) => e.entryName);
+      expect(entries).toEqual(expect.arrayContaining(["index.html", "clip.mp4"]));
+      expect(entries.some((e) => e.startsWith("_proxy/"))).toBe(false);
+      expect(zip.readFile("clip.mp4")?.equals(originalVideo)).toBe(true);
+      expect(zip.readAsText("index.html")).toContain('src="clip.mp4"');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

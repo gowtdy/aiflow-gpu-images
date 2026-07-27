@@ -1,3 +1,4 @@
+import { failCommand } from "../utils/commandResult.js";
 // fallow-ignore-file complexity
 import { defineCommand } from "citty";
 import { existsSync, mkdtempSync, readFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -59,6 +60,11 @@ function orbitStageSource(): string {
  * clip (corrupt media, stalled network mount, codec edge case) cannot wedge
  * `hyperframes snapshot` indefinitely. */
 const FFMPEG_EXTRACT_TIMEOUT_MS = 30_000;
+
+/** Keep millisecond-level snapshot timing proof without leaking floating-point noise. */
+export function formatSnapshotTimestamp(time: number): string {
+  return `${Number(time.toFixed(3))}s`;
+}
 
 /** Keep an exact clip-end snapshot aligned with the renderer's inclusive media
  * window. This intentionally differs from the live player's exclusive-end
@@ -228,6 +234,7 @@ async function captureSnapshots(
     includeEnd?: boolean;
     zoom?: ZoomTarget;
     zoomScale?: number;
+    autoProxy?: boolean;
   },
 ): Promise<string[]> {
   const { bundleWithLocalizedFonts } = await import("../utils/bundleWithLocalizedFonts.js");
@@ -237,7 +244,7 @@ async function captureSnapshots(
   // Localize fonts (embed remote @font-face as data URIs, matching the render
   // path) so snapshots render the real font instead of a fallback sans.
   const html = await bundleWithLocalizedFonts(projectDir);
-  const server = await serveStaticProjectHtml(projectDir, html);
+  const server = await serveStaticProjectHtml(projectDir, html, undefined, [], opts.autoProxy);
 
   const savedPaths: string[] = [];
 
@@ -503,7 +510,7 @@ async function captureSnapshots(
           }
         }
 
-        const timeLabel = `${time.toFixed(1)}s`;
+        const timeLabel = formatSnapshotTimestamp(time);
         const filename = `frame-${String(i).padStart(2, "0")}-at-${timeLabel}.png`;
         const framePath = join(snapshotDir, filename);
 
@@ -599,6 +606,12 @@ export default defineCommand({
       description:
         "Gemini vision frame analysis. Runs by default when GEMINI_API_KEY is set. Pass a custom question (e.g. --describe 'Is the logo visible in every beat?') to override the default prompt, or --describe false to opt out.",
     },
+    proxy: {
+      type: "boolean",
+      description:
+        "Auto-transcode browser-hostile video codecs for snapshots (default: on; overrides hyperframes.json media.autoProxy)",
+      default: undefined,
+    },
   },
   async run({ args }) {
     const project = resolveProject(args.dir);
@@ -626,7 +639,7 @@ export default defineCommand({
     const zoomScale = parseZoomScale(args["zoom-scale"]);
 
     const label = atTimestamps
-      ? `${atTimestamps.length} frames at [${atTimestamps.map((t) => t.toFixed(1) + "s").join(", ")}]`
+      ? `${atTimestamps.length} frames at [${atTimestamps.map(formatSnapshotTimestamp).join(", ")}]`
       : `${frames} frames`;
     const angleLabel =
       camera && (camera.yaw !== 0 || camera.pitch !== 0)
@@ -647,13 +660,14 @@ export default defineCommand({
         includeEnd: args.end !== false,
         zoom: zoomTarget,
         zoomScale,
+        autoProxy: args.proxy as boolean | undefined,
       });
 
       if (paths.length === 0) {
         console.log(
           `\n${c.error("✗")} Could not determine composition duration — no frames captured`,
         );
-        process.exit(1);
+        failCommand();
       }
 
       console.log(
@@ -776,7 +790,7 @@ export default defineCommand({
     } catch (err) {
       const msg = normalizeErrorMessage(err);
       console.error(`\n${c.error("✗")} Snapshot failed: ${msg}`);
-      process.exit(1);
+      failCommand();
     }
   },
 });

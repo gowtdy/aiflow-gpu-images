@@ -1,3 +1,4 @@
+import { setCommandExitCode, requestCliExit } from "../utils/commandResult.js";
 import { defineCommand } from "citty";
 import type { Example } from "./_examples.js";
 import { spawn, type ChildProcessByStdio } from "node:child_process";
@@ -21,6 +22,10 @@ export const examples: Example[] = [
   ],
   ["List all active preview servers", "hyperframes preview --list"],
   ["Kill all active preview servers", "hyperframes preview --kill-all"],
+  [
+    "Disable auto-proxying of browser-hostile video codecs (HEVC, ProRes, AV1)",
+    "hyperframes preview --no-proxy",
+  ],
 ];
 import {
   existsSync,
@@ -56,6 +61,8 @@ import {
 } from "../server/portUtils.js";
 import { killOrphanedProcesses, killProcessTree } from "../utils/orphanCleanup.js";
 import { resolveProject } from "../utils/project.js";
+import { resolveAutoProxy } from "../utils/projectConfig.js";
+import { studioProxyEnv } from "../utils/studioProxyEnv.js";
 import {
   readBackgroundPreviewStatus,
   startBackgroundPreview,
@@ -72,10 +79,12 @@ interface BrowserLaunchOptions {
 
 interface StudioLaunchOptions extends BrowserLaunchOptions {
   projectName?: string;
+  autoProxy?: boolean;
 }
 
 interface EmbeddedStudioOptions extends StudioLaunchOptions {
   forceNew?: boolean;
+  autoProxy?: boolean;
 }
 
 type StudioChildProcess = ChildProcessByStdio<null, Readable, Readable>;
@@ -181,6 +190,12 @@ export default defineCommand({
       description:
         "Launch the opened browser with --disable-gpu (requires --browser-path). For hosts where hardware acceleration crashes the graphics driver (e.g. NVIDIA Xid resets); with the system default browser use --no-open instead.",
     },
+    proxy: {
+      type: "boolean",
+      description:
+        "Auto-transcode browser-hostile video codecs (HEVC, ProRes, AV1) to a cached authoring proxy for preview (default: on; overrides hyperframes.json's media.autoProxy)",
+      negativeDescription: "Disable auto-proxying of browser-hostile video codecs",
+    },
   },
   async run({ args }) {
     const startPort = parseInt(args.port ?? "3002", 10);
@@ -285,7 +300,7 @@ export default defineCommand({
     // Validation: --user-data-dir requires --browser-path
     if (args["user-data-dir"] && !args["browser-path"]) {
       clack.log.error("--user-data-dir requires --browser-path");
-      process.exitCode = 1;
+      setCommandExitCode(1);
       return;
     }
     // Validation: --remote-debugging-port deps
@@ -296,7 +311,7 @@ export default defineCommand({
     });
     if (depsError) {
       clack.log.error(depsError);
-      process.exitCode = 1;
+      setCommandExitCode(1);
       return;
     }
 
@@ -307,7 +322,7 @@ export default defineCommand({
       clack.log.error(
         "--browser-no-gpu requires --browser-path (the system default browser cannot receive Chromium flags — use --no-open on GPU-unstable hosts)",
       );
-      process.exitCode = 1;
+      setCommandExitCode(1);
       return;
     }
     const userDataDir = args["user-data-dir"] as string | undefined;
@@ -318,14 +333,17 @@ export default defineCommand({
       );
     } catch (err) {
       clack.log.error((err as Error).message);
-      process.exitCode = 1;
+      setCommandExitCode(1);
       return;
     }
+    // Resolve once so embedded, monorepo-dev, and locally installed Studio
+    // modes all receive identical --proxy/--no-proxy + config semantics.
+    const autoProxy = resolveAutoProxy(dir, args.proxy as boolean | undefined);
 
     if (isDevMode()) {
       if (args.background) {
         clack.log.error("--background currently supports the embedded preview server only");
-        process.exitCode = 1;
+        setCommandExitCode(1);
         return;
       }
       return runDevMode(dir, {
@@ -335,6 +353,7 @@ export default defineCommand({
         userDataDir,
         remoteDebuggingPort,
         browserNoGpu,
+        autoProxy,
       });
     }
 
@@ -342,7 +361,7 @@ export default defineCommand({
     if (hasLocalStudio(dir)) {
       if (args.background) {
         clack.log.error("--background currently supports the embedded preview server only");
-        process.exitCode = 1;
+        setCommandExitCode(1);
         return;
       }
       return runLocalStudioMode(dir, {
@@ -352,6 +371,7 @@ export default defineCommand({
         userDataDir,
         remoteDebuggingPort,
         browserNoGpu,
+        autoProxy,
       });
     }
 
@@ -363,7 +383,7 @@ export default defineCommand({
         });
       } catch (error) {
         clack.log.error(errorMessage(error));
-        process.exitCode = 1;
+        setCommandExitCode(1);
         return;
       }
       const url = `http://localhost:${background.port}`;
@@ -391,6 +411,7 @@ export default defineCommand({
     return runEmbeddedMode(dir, startPort, {
       projectName,
       forceNew,
+      autoProxy,
       noOpen,
       browserPath,
       userDataDir,
@@ -421,7 +442,7 @@ function printSelectionFailure(code: string, message: string, json: boolean): vo
   } else {
     clack.log.error(message);
   }
-  process.exitCode = 1;
+  setCommandExitCode(1);
 }
 
 function previewServerPayload(server: {
@@ -924,6 +945,7 @@ async function runDevMode(dir: string, options?: StudioLaunchOptions): Promise<v
   const child = spawn("bun", ["run", "dev"], {
     cwd: studioPkgDir,
     stdio: ["ignore", "pipe", "pipe"],
+    env: studioProxyEnv(options?.autoProxy ?? true),
   });
 
   attachStudioReadyHandler(child, s, pName, dir, options);
@@ -973,6 +995,7 @@ async function runLocalStudioMode(dir: string, options?: StudioLaunchOptions): P
   const child = spawn(viteCommand.command, viteCommand.args, {
     cwd: studioPkgPath,
     stdio: ["ignore", "pipe", "pipe"],
+    env: studioProxyEnv(options?.autoProxy ?? true),
   });
 
   attachStudioReadyHandler(child, s, pName, dir, options);
@@ -1015,11 +1038,15 @@ async function runEmbeddedMode(
     console.error();
     console.error(`  ${c.dim("Rebuild the CLI package with")} ${c.accent("bun run build")}`);
     console.error();
-    process.exitCode = 1;
+    setCommandExitCode(1);
     return;
   }
 
-  const { app } = createStudioServer({ projectDir: dir, projectName: pName });
+  const { app } = createStudioServer({
+    projectDir: dir,
+    projectName: pName,
+    autoProxy: options?.autoProxy,
+  });
   const serverBuildSignature = await loadPreviewServerBuildSignature();
 
   let result: FindPortResult;
@@ -1036,7 +1063,7 @@ async function runEmbeddedMode(
     console.error();
     console.error(`  ${(err as Error).message}`);
     console.error();
-    process.exitCode = 1;
+    setCommandExitCode(1);
     return;
   }
 
@@ -1099,7 +1126,7 @@ async function runEmbeddedMode(
       // Hard deadline: if cleanup hangs (e.g. dead Chrome never responds to
       // browser.close()), force exit. Armed before awaiting cleanup so it
       // can't be blocked by a stuck drainBrowserPool().
-      setTimeout(() => process.exit(0), 3000).unref();
+      setTimeout(() => requestCliExit(0), 3000).unref();
 
       // Kill ffmpeg first (sync, fast), then drain browsers (async, slower).
       const cleanup = async () => {

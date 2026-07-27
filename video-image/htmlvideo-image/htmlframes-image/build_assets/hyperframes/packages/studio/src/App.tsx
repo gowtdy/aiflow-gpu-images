@@ -12,10 +12,7 @@ import { useFileManager } from "./hooks/useFileManager";
 import { usePreviewPersistence } from "./hooks/usePreviewPersistence";
 import { usePreviewDocumentVersion } from "./hooks/usePreviewDocumentVersion";
 import { useTimelineEditing } from "./hooks/useTimelineEditing";
-import {
-  persistTimelineMoveEditsAtomically,
-  type TimelineMoveOperation,
-} from "./hooks/timelineMoveAdapter";
+import { persistTimelineMoveEditsAtomically } from "./hooks/timelineMoveAdapter";
 import type { TimelineZIndexReorderCommit } from "./hooks/useTimelineEditingTypes";
 import type { TimelineStackingReorderIntent } from "./player/components/timelineStacking";
 import type { BlockPreviewInfo } from "./components/sidebar/BlocksTab";
@@ -57,6 +54,7 @@ import { FileManagerProvider } from "./contexts/FileManagerContext";
 import { DomEditProvider } from "./contexts/DomEditContext";
 import { StudioSplash } from "./components/StudioSplash";
 import { useServerConnection } from "./hooks/useServerConnection";
+import { useTimelineAddAtPlayhead } from "./hooks/useTimelineAddAtPlayhead";
 import {
   normalizeStudioCompositionPath,
   readStudioUrlStateFromWindow,
@@ -64,8 +62,7 @@ import {
 } from "./utils/studioUrlState";
 import { trackStudioSessionStart } from "./telemetry/events";
 import { hasFiredSessionStart, markSessionStartFired } from "./telemetry/config";
-
-type CanvasRect = { left: number; top: number; width: number; height: number };
+type TimelineMoveOperation = Parameters<typeof persistTimelineMoveEditsAtomically>[2];
 // fallow-ignore-next-line complexity
 export function StudioApp() {
   const { projectId, resolving, waitingForServer } = useServerConnection();
@@ -100,9 +97,6 @@ export function StudioApp() {
   const timelineDuration = usePlayerStore((s) => s.duration);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isMasterView = !activeCompPath || activeCompPath === "index.html";
-  const activePreviewUrl = activeCompPath
-    ? `/api/projects/${projectId}/preview/comp/${activeCompPath}`
-    : null;
   const effectiveTimelineDuration = useMemo(() => {
     const maxEnd =
       timelineElements.length > 0
@@ -166,6 +160,7 @@ export function StudioApp() {
     timelineElements,
     showToast,
     writeProjectFile: fileManager.writeProjectFile,
+    observeProjectFileVersion: fileManager.observeProjectFileVersion,
     recordEdit: editHistory.recordEdit,
     domEditSaveTimestampRef,
     reloadPreview,
@@ -195,19 +190,19 @@ export function StudioApp() {
     },
     [timelineEditing.handleTimelineGroupMove],
   );
-  const handleAddAssetAtPlayhead = useCallback(
-    (assetPath: string) =>
-      timelineEditing.handleTimelineAssetDrop(assetPath, {
-        start: usePlayerStore.getState().currentTime,
-        track: 0,
-      }),
-    [timelineEditing],
+  const {
+    addAssetAtPlayhead: handleAddAssetAtPlayhead,
+    addCompositionAtPlayhead: handleAddCompositionAtPlayhead,
+  } = useTimelineAddAtPlayhead(
+    timelineEditing.handleTimelineAssetDrop,
+    timelineEditing.handleTimelineCompositionDrop,
   );
   const {
     activeBlockParams,
     setActiveBlockParams,
     handleAddBlock,
     handleTimelineBlockDrop,
+    handleAddMediaOverlay,
     handlePreviewBlockDrop,
   } = useBlockHandlers({
     projectId,
@@ -344,7 +339,9 @@ export function StudioApp() {
   const renderClipContent = useRenderClipContent({
     projectIdRef: fileManager.projectIdRef,
     compIdToSrc,
-    activePreviewUrl,
+    activePreviewUrl: activeCompPath
+      ? `/api/projects/${projectId}/preview/comp/${activeCompPath}`
+      : null,
     effectiveTimelineDuration,
   });
   const compositionDimensions = useCompositionDimensions();
@@ -375,14 +372,13 @@ export function StudioApp() {
   });
   handleToggleRecordingRef.current = handleToggleRecording;
   const recordingToggle = STUDIO_KEYFRAMES_ENABLED ? handleToggleRecording : undefined;
-  const canvasRectRef = useRef<CanvasRect | null>(null);
+  const canvasRectRef = useRef<DOMRect | null>(null);
   useLayoutEffect(() => {
     if (gestureState !== "recording" || !previewIframe) {
       canvasRectRef.current = null;
       return;
     }
-    const r = previewIframe.getBoundingClientRect();
-    canvasRectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
+    canvasRectRef.current = previewIframe.getBoundingClientRect();
   }, [gestureState, previewIframe]);
   const handlePreviewIframeRef = useCallback(
     (iframe: HTMLIFrameElement | null) => {
@@ -517,6 +513,7 @@ export function StudioApp() {
                         lintFindingCount={lintModal?.length ?? findingsByFile.size}
                         lintFindingsByFile={findingsByFile}
                         onAddAssetToTimeline={handleAddAssetAtPlayhead}
+                        onAddCompositionToTimeline={handleAddCompositionAtPlayhead}
                       />
                     }
                     right={
@@ -533,10 +530,12 @@ export function StudioApp() {
                           onToggleRecording={recordingToggle}
                           sdkSession={sdkHandle.session}
                           publishSdkSession={sdkHandle.publish}
+                          forceReloadSdkSession={sdkHandle.forceReload}
                           reloadPreview={reloadPreview}
                           domEditSaveTimestampRef={domEditSaveTimestampRef}
                           recordEdit={editHistory.recordEdit}
                           onToggleElementHidden={timelineEditing.handleToggleElementHidden}
+                          onAddMediaOverlay={handleAddMediaOverlay}
                         />
                       )
                     }
@@ -545,6 +544,7 @@ export function StudioApp() {
                     handleTimelineElementDelete={timelineEditing.handleTimelineElementDelete}
                     handleTimelineAssetDrop={timelineEditing.handleTimelineAssetDrop}
                     handleTimelineBlockDrop={handleTimelineBlockDrop}
+                    handleTimelineCompositionDrop={timelineEditing.handleTimelineCompositionDrop}
                     handlePreviewBlockDrop={handlePreviewBlockDrop}
                     handleTimelineFileDrop={timelineEditing.handleTimelineFileDrop}
                     handleTimelineElementMove={timelineEditing.handleTimelineElementMove}

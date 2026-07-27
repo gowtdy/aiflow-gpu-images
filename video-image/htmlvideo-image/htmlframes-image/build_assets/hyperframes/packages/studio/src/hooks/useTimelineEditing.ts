@@ -12,6 +12,7 @@ import {
   applyTimelineStackingReorder,
   buildPatchTarget,
   patchIframeDomTiming,
+  playbackStartAttributeForElement,
   persistTimelineEdit,
   formatTimelineAttributeNumber,
   extendRootDurationIfNeeded,
@@ -46,6 +47,7 @@ export function useTimelineEditing({
   timelineElements,
   showToast,
   writeProjectFile,
+  observeProjectFileVersion,
   recordEdit,
   domEditSaveTimestampRef,
   reloadPreview,
@@ -262,10 +264,7 @@ export function useTimelineEditing({
         ["data-duration", formatTimelineAttributeNumber(updates.duration)],
       ];
       if (updates.playbackStart != null) {
-        const liveAttr =
-          element.playbackStartAttr === "playback-start"
-            ? "data-playback-start"
-            : "data-media-start";
+        const liveAttr = playbackStartAttributeForElement(element);
         liveAttrs.push([liveAttr, formatTimelineAttributeNumber(updates.playbackStart)]);
       }
       patchIframeDomTiming(previewIframeRef.current, element, liveAttrs, activeCompPath);
@@ -474,19 +473,21 @@ export function useTimelineEditing({
     ],
   );
 
-  const { handleTimelineAssetDrop, handleTimelineFileDrop } = useTimelineAssetDropOps({
-    projectIdRef,
-    activeCompPath,
-    timelineElements,
-    showToast,
-    writeProjectFile,
-    recordEdit,
-    domEditSaveTimestampRef,
-    reloadPreview,
-    uploadProjectFiles,
-    isRecordingRef,
-    forceReloadSdkSession,
-  });
+  const { handleTimelineAssetDrop, handleTimelineFileDrop, handleTimelineCompositionDrop } =
+    useTimelineAssetDropOps({
+      projectIdRef,
+      activeCompPath,
+      timelineElements,
+      showToast,
+      writeProjectFile,
+      recordEdit,
+      domEditSaveTimestampRef,
+      reloadPreview,
+      uploadProjectFiles,
+      isRecordingRef,
+      forceReloadSdkSession,
+      observeProjectFileVersion,
+    });
 
   const handleBlockedTimelineEdit = useCallback(
     (_element: TimelineElement) => {
@@ -503,10 +504,12 @@ export function useTimelineEditing({
     activeCompPath,
     showToast,
     writeProjectFile,
+    observeProjectFileVersion,
     recordEdit,
     domEditSaveTimestampRef,
     reloadPreview,
     isRecordingRef,
+    forceReloadSdkSession,
   });
 
   return {
@@ -520,6 +523,7 @@ export function useTimelineEditing({
     handleRazorSplitAll,
     handleTimelineAssetDrop,
     handleTimelineFileDrop,
+    handleTimelineCompositionDrop,
     handleBlockedTimelineEdit,
     ...groupEditing,
   };

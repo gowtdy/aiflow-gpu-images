@@ -1,3 +1,4 @@
+import { setCommandExitCode } from "../utils/commandResult.js";
 import { defineCommand } from "citty";
 import type { Example } from "./_examples.js";
 import * as clack from "@clack/prompts";
@@ -40,13 +41,13 @@ export default defineCommand({
     const checkOnly = args.check === true;
 
     if (args.project !== undefined) {
-      const dir = typeof args.project === "string" && args.project.length ? args.project : ".";
-      const res = await upgradeProjectPins(resolve(dir), { json: useJson, check: checkOnly });
-      if (useJson) {
+      const p = resolveProjectArgs(args.project, { check: checkOnly, json: useJson });
+      const res = await upgradeProjectPins(resolve(p.dir), { json: p.json, check: p.check });
+      if (p.json) {
         console.log(JSON.stringify(withMeta(res), null, 2));
         return;
       }
-      printProjectPinResult(res, checkOnly);
+      printProjectPinResult(res, p.check);
       return;
     }
 
@@ -112,7 +113,7 @@ function applyUpgrade(result: UpdateCheckResult, autoYes: boolean): void {
   // notice via isSafeVersion.
   if (!isSafeVersion(result.latest)) {
     clack.outro(c.dim("Refusing to install: unexpected version string from npm registry."));
-    process.exitCode = 1;
+    setCommandExitCode(1);
     return;
   }
 
@@ -155,6 +156,30 @@ function printManualCommands(displayCmd: string, npxFallback: string): void {
   console.log(`   ${c.accent(npxFallback)}`);
   console.log();
   clack.outro(c.success("Run one of the commands above to upgrade."));
+}
+
+/**
+ * citty parses `--project` as a string option, so a bare `--project` followed
+ * by another flag consumes that flag as its value (`upgrade --project --check`
+ * arrives here as project="--check"). A leading dash can never be a real
+ * directory argument, so reclaim the eaten token as the flag the user wrote
+ * and fall back to the current directory.
+ */
+export function resolveProjectArgs(
+  project: string | boolean,
+  opts: { check: boolean; json: boolean },
+): { dir: string; check: boolean; json: boolean } {
+  if (typeof project !== "string" || project.length === 0) {
+    return { dir: ".", check: opts.check, json: opts.json };
+  }
+  if (project.startsWith("-")) {
+    return {
+      dir: ".",
+      check: opts.check || project === "--check",
+      json: opts.json || project === "--json",
+    };
+  }
+  return { dir: project, check: opts.check, json: opts.json };
 }
 
 export async function upgradeProjectPins(
@@ -217,6 +242,6 @@ export function runDetectedInstall(
   } catch {
     clack.outro(c.dim("Install failed. Try running manually:"));
     console.log(`   ${c.accent(displayCmd)}`);
-    process.exitCode = 1;
+    setCommandExitCode(1);
   }
 }

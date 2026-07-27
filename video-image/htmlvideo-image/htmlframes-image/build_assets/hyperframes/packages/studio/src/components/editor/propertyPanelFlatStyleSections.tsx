@@ -3,11 +3,7 @@ import { useEffect, useState } from "react";
 import { isTextEditableSelection, type DomEditSelection } from "./domEditing";
 import { buildDefaultGradientModel, serializeGradient } from "./gradientValue";
 import { BorderRadiusEditor } from "./BorderRadiusEditor";
-import {
-  formatStrokeSummary,
-  parseStrokeSummary,
-  STROKE_STYLE_OPTIONS,
-} from "./propertyPanelFlatStyleHelpers";
+import { STROKE_STYLE_OPTIONS } from "./propertyPanelFlatStyleHelpers";
 import {
   buildBoxShadowPresetValue,
   buildClipPathValue,
@@ -47,6 +43,7 @@ function FlatFillFields({
   styles,
   assets,
   onSetStyle,
+  onPreviewStyle,
   onImportAssets,
 }: {
   projectId: string;
@@ -54,6 +51,7 @@ function FlatFillFields({
   styles: Record<string, string>;
   assets: string[];
   onSetStyle: (prop: string, value: string) => void | Promise<void>;
+  onPreviewStyle?: (prop: string, value: string) => void;
   onImportAssets?: (files: FileList) => Promise<string[]>;
 }) {
   const styleEditingDisabled = !element.capabilities.canEditStyles;
@@ -109,6 +107,7 @@ function FlatFillFields({
           label="Color"
           value={styles["background-color"] ?? "transparent"}
           disabled={styleEditingDisabled}
+          onPreview={(next) => onPreviewStyle?.("background-color", next)}
           onCommit={(next) => onSetStyle("background-color", next)}
         />
       ) : preferredFillMode === "Gradient" ? (
@@ -147,10 +146,9 @@ function FlatFillFields({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Flat Stroke row — combined width+style+color                       */
+/*  Flat Stroke row — width (numeric), style (select), color           */
 /* ------------------------------------------------------------------ */
 
-// fallow-ignore-next-line complexity
 function FlatStrokeRow({
   styles,
   disabled,
@@ -167,52 +165,40 @@ function FlatStrokeRow({
   const borderStyleValue = styles["border-style"] || styles["border-top-style"] || "none";
   const borderColorValue =
     styles["border-color"] || styles["border-top-color"] || "rgba(255, 255, 255, 0.18)";
-  const summary = formatStrokeSummary(borderWidthValue, borderStyleValue);
-  const tier = resolveValueTier(
-    styles["border-width"] != null || styles["border-style"] != null ? summary : undefined,
-    formatStrokeSummary(0, "none"),
-  );
+  const widthDisplay = formatPxMetricValue(borderWidthValue);
 
   return (
     <>
       <FlatRow
-        label="Stroke"
-        value={summary}
-        tier={tier}
+        label="Stroke width"
+        value={widthDisplay}
+        tier={resolveValueTier(styles["border-width"], "0px")}
         disabled={disabled}
         onCommit={async (next) => {
-          const parsed = parseStrokeSummary(next);
-          if (!parsed) return;
-          if (!STROKE_STYLE_OPTIONS.includes(parsed.style)) return;
-          const normalizedWidth = normalizePanelPxValue(`${parsed.widthPx}px`, {
+          const normalizedWidth = normalizePanelPxValue(next, {
             min: 0,
             max: 200,
             fallback: borderWidthValue,
           });
           if (!normalizedWidth) return;
+          // buildStrokeWidthStyleUpdates already covers "a width typed in
+          // from 0 needs a style to actually render a visible border" —
+          // it only defaults to solid when the current style is none/hidden,
+          // never clobbering an already-chosen style (dashed, dotted, …).
           for (const [property, value] of buildStrokeWidthStyleUpdates(
             normalizedWidth,
-            parsed.style,
+            borderStyleValue,
           )) {
             await onSetStyle(property, value);
           }
-          for (const [property, value] of buildStrokeStyleUpdates(parsed.style, normalizedWidth)) {
-            await onSetStyle(property, value);
-          }
         }}
-        suffix={
-          <>
-            <span
-              className="h-4 w-4 flex-shrink-0 rounded border border-panel-border-input"
-              style={{ backgroundColor: borderColorValue }}
-            />
-            <span className="font-mono text-[10px] text-panel-text-3">{borderColorValue}</span>
-          </>
-        }
       />
       <FlatSelectRow
         label="Stroke style"
         value={borderStyleValue}
+        // Valid border-style keywords — the ONLY way to set this, since a
+        // free-text field here would require typing an exact CSS keyword
+        // (e.g. "dashed") with no indication of which ones are valid.
         options={STROKE_STYLE_OPTIONS}
         tier={resolveValueTier(styles["border-style"], "none")}
         disabled={disabled}
@@ -470,6 +456,7 @@ export function FlatStyleSection({
   styles,
   assets,
   onSetStyle,
+  onPreviewStyle,
   onImportAssets,
   gsapBorderRadius,
 }: {
@@ -478,6 +465,7 @@ export function FlatStyleSection({
   styles: Record<string, string>;
   assets: string[];
   onSetStyle: (prop: string, value: string) => void | Promise<void>;
+  onPreviewStyle?: (prop: string, value: string) => void;
   onImportAssets?: (files: FileList) => Promise<string[]>;
   gsapBorderRadius?: { tl: number; tr: number; br: number; bl: number } | null;
 }) {
@@ -490,6 +478,7 @@ export function FlatStyleSection({
         styles={styles}
         assets={assets}
         onSetStyle={onSetStyle}
+        onPreviewStyle={onPreviewStyle}
         onImportAssets={onImportAssets}
       />
       <FlatStrokeRow styles={styles} disabled={styleEditingDisabled} onSetStyle={onSetStyle} />

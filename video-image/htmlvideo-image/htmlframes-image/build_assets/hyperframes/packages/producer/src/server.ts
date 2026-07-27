@@ -43,7 +43,13 @@ import { isVideoFrameFormat } from "@hyperframes/engine";
 import { resolveRenderPaths } from "./utils/paths.js";
 import { defaultLogger, type ProducerLogger } from "./logger.js";
 import { Semaphore } from "./utils/semaphore.js";
-import { parseFps, normalizeResolutionFlag, type CanvasResolution } from "@hyperframes/core";
+import {
+  parseFps,
+  normalizeResolutionFlag,
+  isAspectAgnosticResolutionAlias,
+  type CanvasResolution,
+} from "@hyperframes/core";
+import { createRenderRequest, renderConfigFromRequest } from "./renderRequest.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,9 +99,17 @@ interface RenderInput {
    * Output resolution preset (e.g. `landscape-4k`). Drives the same
    * `resolveDeviceScaleFactor` supersampling path the local CLI uses — Chrome
    * renders at a higher devicePixelRatio so the captured screenshot lands at
-   * the requested dimensions. Aspect ratio must match the composition.
+   * the requested dimensions. Aspect ratio must match the composition unless
+   * `outputResolutionAspectAgnostic` is set (see below).
    */
   outputResolution?: CanvasResolution;
+  /**
+   * True when `outputResolution` was normalized from an aspect-agnostic alias
+   * (`1080p`, `hd`, `4k`, `uhd`). The compile stage will adapt the preset to
+   * the composition's orientation instead of rejecting portrait/square
+   * compositions as an aspect-ratio mismatch.
+   */
+  outputResolutionAspectAgnostic?: boolean;
 }
 
 interface PreparedRenderInput {
@@ -104,6 +118,20 @@ interface PreparedRenderInput {
 }
 
 const DEFAULT_SERVER_FPS = { num: 30, den: 1 } as const;
+const SAFE_RENDER_ERROR_CODES = new Set<string>([
+  "VIDEO_SOURCE_UNRENDERABLE",
+  "VIDEO_EXTRACTION_FAILED",
+]);
+
+/**
+ * Preserve only bounded producer error codes across JSON/SSE. Never derive a
+ * code from the message: it may contain local paths or signed source URLs.
+ */
+export function extractSafeRenderErrorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
+  const code = error.code;
+  return typeof code === "string" && SAFE_RENDER_ERROR_CODES.has(code) ? code : undefined;
+}
 
 function parseServerFps(value: unknown): RenderInput["fps"] {
   if (typeof value !== "number" && typeof value !== "string") return DEFAULT_SERVER_FPS;
@@ -151,7 +179,8 @@ export function parseRenderOptions(body: Record<string, unknown>): Omit<RenderIn
     ? body.videoFrameFormat
     : undefined;
 
-  const { variables, outputResolution } = parseRenderOverrides(body);
+  const { variables, outputResolution, outputResolutionAspectAgnostic } =
+    parseRenderOverrides(body);
 
   return {
     outputPath,
@@ -165,6 +194,7 @@ export function parseRenderOptions(body: Record<string, unknown>): Omit<RenderIn
     format,
     variables,
     outputResolution,
+    outputResolutionAspectAgnostic,
     videoFrameFormat,
   };
 }
@@ -182,15 +212,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function parseRenderOverrides(body: Record<string, unknown>): {
   variables?: Record<string, unknown>;
   outputResolution?: CanvasResolution;
+  outputResolutionAspectAgnostic?: boolean;
 } {
   // Only forward a plain JSON object. Arrays / primitives / null → undefined.
   const variables = isPlainObject(body.variables) ? body.variables : undefined;
   // Accept canonical presets and aliases ("4k", "landscape-4k", …).
-  const outputResolution =
-    typeof body.outputResolution === "string"
-      ? normalizeResolutionFlag(body.outputResolution)
-      : undefined;
-  return { variables, outputResolution };
+  const rawOutputResolution =
+    typeof body.outputResolution === "string" ? body.outputResolution : undefined;
+  const outputResolution = rawOutputResolution
+    ? normalizeResolutionFlag(rawOutputResolution)
+    : undefined;
+  // Preserve the "raw shape was tier-only" signal so the compile stage can
+  // adapt the preset to the composition's orientation. Set only when
+  // normalization succeeded — a bad string doesn't need the flag.
+  const outputResolutionAspectAgnostic = outputResolution
+    ? isAspectAgnosticResolutionAlias(rawOutputResolution)
+    : undefined;
+  return { variables, outputResolution, outputResolutionAspectAgnostic };
 }
 
 /**
@@ -198,21 +236,26 @@ function parseRenderOverrides(body: Record<string, unknown>): {
  * the sync (`render`) and streaming (`render-stream`) handlers so the field
  * set — including `variables` and `outputResolution` — stays in one place.
  */
-function buildRenderJobConfig(input: RenderInput, log: ProducerLogger) {
-  return {
-    fps: input.fps,
-    quality: input.quality,
-    format: input.format,
-    workers: input.workers,
-    useGpu: input.useGpu,
-    debug: input.debug,
-    strictness: input.strictness,
-    entryFile: input.entryFile,
-    variables: input.variables,
-    outputResolution: input.outputResolution,
-    videoFrameFormat: input.videoFrameFormat,
-    logger: log,
-  };
+function buildRenderJobConfig(input: RenderInput, outputPath: string, log: ProducerLogger) {
+  const request = createRenderRequest({
+    projectDir: input.projectDir,
+    outputPath,
+    options: {
+      fps: input.fps,
+      quality: input.quality,
+      format: input.format ?? "mp4",
+      workers: input.workers,
+      useGpu: input.useGpu,
+      debug: input.debug,
+      strictness: input.strictness,
+      entryFile: input.entryFile,
+      variables: input.variables,
+      outputResolution: input.outputResolution,
+      outputResolutionAspectAgnostic: input.outputResolutionAspectAgnostic,
+      videoFrameFormat: input.videoFrameFormat,
+    },
+  });
+  return renderConfigFromRequest(request, { logger: log });
 }
 
 /**
@@ -495,6 +538,7 @@ async function writeRenderStreamFailure(input: {
     return;
   }
   const errorMsg = error instanceof Error ? error.message : String(error);
+  const errorCode = extractSafeRenderErrorCode(error);
   const elapsedMs = Date.now() - startedAtMs;
   log.error("render-stream failed", {
     requestId,
@@ -507,6 +551,7 @@ async function writeRenderStreamFailure(input: {
       type: "error",
       requestId,
       error: errorMsg,
+      errorCode,
       stage: job.currentStage,
       elapsedMs,
       errorDetails: job.errorDetails ?? null,
@@ -618,7 +663,7 @@ export function createRenderHandlers(options: HandlerOptions = {}): RenderHandle
       quality: input.quality,
     });
 
-    const job = createRenderJob(buildRenderJobConfig(input, log));
+    const job = createRenderJob(buildRenderJobConfig(input, absoluteOutputPath, log));
 
     try {
       await executeRenderJob(
@@ -655,6 +700,7 @@ export function createRenderHandlers(options: HandlerOptions = {}): RenderHandle
     } catch (error) {
       const durationMs = Date.now() - t0;
       const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorCode = extractSafeRenderErrorCode(error);
       log.error("render failed", {
         requestId,
         durationMs,
@@ -666,6 +712,7 @@ export function createRenderHandlers(options: HandlerOptions = {}): RenderHandle
           success: false,
           requestId,
           error: errorMsg,
+          errorCode,
           stage: job.currentStage,
           durationMs,
           errorDetails: job.errorDetails ?? null,
@@ -694,7 +741,7 @@ export function createRenderHandlers(options: HandlerOptions = {}): RenderHandle
 
       log.info("render-stream started", { requestId, projectDir: input.projectDir });
 
-      const job = createRenderJob(buildRenderJobConfig(input, log));
+      const job = createRenderJob(buildRenderJobConfig(input, absoluteOutputPath, log));
       const abortController = new AbortController();
       const onRequestAbort = () =>
         abortController.abort(new RenderCancelledError("request_aborted"));
