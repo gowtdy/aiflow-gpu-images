@@ -31,7 +31,7 @@ Read `../hyperframes-creative/references/story-spine.md` (hook language, value-b
 
 Use `story-design.md` for the explainer structure (concept / how-to / listicle / story), hook strategy, clarity techniques, emotional beats, the type-enum mapping, and `VO_MODE`. The video's sequence comes from **narrative design, not the input text's paragraph order** — reorder, merge, omit, compress. As a **soft guide**, consult the role→blueprint menu in `../hyperframes-animation/blueprints-index.md`: for each beat, write the voiceover in the shape its candidate blueprint implies and tag that candidate `blueprint:` id when one fits. Teaching truth still decides which beats exist — never force a beat to fit a blueprint, and never invent a beat just because a proven shape is available. Faceless visuals are invented downstream, so frames do **not** carry an asset inventory: leave `asset_candidates` empty unless the user supplied a real `public/<basename>` image. Use the exact required fields from the storyboard and script references.
 
-Write outline-stage frames only: `status: outline`, required narrative fields filled. Do **not** write `## Video direction` or time-coded Scene shot sequences — those belong to a later visual-design step.
+Write outline-stage frames only: `status: outline`, required narrative fields filled. Do **not** write `## Video direction` or time-coded Scene shot sequences — those belong to `/aiflow-build-frame-visual`.
 
 Storyboard frontmatter: set `format` from BRIEF `aspect`, copy `message` from BRIEF, set `audience` / `arc` / `mode` (derived) / `music` per the storyboard and story-design references.
 
