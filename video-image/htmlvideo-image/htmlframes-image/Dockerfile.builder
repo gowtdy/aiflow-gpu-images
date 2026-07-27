@@ -5,7 +5,13 @@ RUN apt-get update && apt-get install -y curl unzip \
     && ln -sf /root/.bun/bin/bun /usr/local/bin/bun \
     && rm -rf /var/lib/apt/lists/*
 COPY build_assets/hyperframes /app/hyperframes
+COPY build_assets/scripts/bun-install-with-progress.sh /tmp/bun-install-with-progress.sh
 WORKDIR /app/hyperframes
+
+# Default: npmmirror (China). Override:
+#   docker build --build-arg BUN_REGISTRY=https://registry.npmjs.org ...
+ARG BUN_REGISTRY=https://registry.npmmirror.com
+ENV BUN_CONFIG_REGISTRY=${BUN_REGISTRY}
 
 # Local image only builds CLI (+ compile deps). Strip aws-lambda binary
 # packages so bun install does not hit GitHub CDN (ffmpeg-static timeout).
@@ -23,32 +29,11 @@ RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-s
 " \
   && echo "==> [1/6] package.json patched"
 
-# bun --verbose still goes quiet while hardlinking huge packages
+# bun --verbose goes quiet while hardlinking huge packages
 # (@fontsource/noto-sans-jp ~80MB/2k files, onnxruntime-node ~97MB).
-# Heartbeat + line-buffering so docker build --progress=plain shows liveness.
-RUN echo "==> [2/6] bun install starting..." \
-  && echo "    note: long quiet stretches are normal during hardlink of large tarballs" \
-  && stdbuf -oL -eL bash -c '\
-    set -euo pipefail; \
-    bun install --verbose & \
-    bun_pid=$!; \
-    ( \
-      elapsed=0; \
-      while kill -0 "$bun_pid" 2>/dev/null; do \
-        sleep 15; \
-        elapsed=$((elapsed + 15)); \
-        if kill -0 "$bun_pid" 2>/dev/null; then \
-          echo "==> [2/6] bun install still running (${elapsed}s elapsed)..."; \
-        fi; \
-      done; \
-    ) & \
-    hb_pid=$!; \
-    wait "$bun_pid"; \
-    status=$?; \
-    kill "$hb_pid" 2>/dev/null || true; \
-    wait "$hb_pid" 2>/dev/null || true; \
-    exit "$status"; \
-  ' \
+# Script streams verbose log + heartbeat: phase/pkg/counts/size/files.
+RUN chmod +x /tmp/bun-install-with-progress.sh \
+  && /tmp/bun-install-with-progress.sh \
   && echo "==> [2/6] bun install done"
 
 RUN echo "==> [3/6] build parsers / lint / studio-server" \
