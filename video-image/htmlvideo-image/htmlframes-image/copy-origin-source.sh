@@ -49,6 +49,7 @@ if [ -d "${hyperframes_bak_path}/skills/aiflow-build-frame-html" ]; then
   cp -r "${hyperframes_bak_path}/skills/aiflow-build-frame-html" "${target_path}/skills/"
 fi
 mkdir -p ${build_assets_path}/scripts/lib
+cp ${script_source_path}/skills/faceless-explainer/scripts/frame-packets.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/build-frame.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/tokens.mjs ${build_assets_path}/scripts/lib/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/assemble-index.mjs ${build_assets_path}/scripts/
@@ -77,3 +78,5 @@ echo "patch assemble-index --videodir"
 python3 modify/patch-assemble-index.py
 echo "patch transitions --videodir"
 python3 modify/patch-transitions.py
+echo "patch frame-packets container paths"
+python3 modify/patch-frame-packets.py
