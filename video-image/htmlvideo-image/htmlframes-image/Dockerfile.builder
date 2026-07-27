@@ -32,8 +32,9 @@ RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-s
 " \
   && echo "==> [1/6] package.json patched"
 
-# No --verbose by default (BuildKit clips at ~200KiB/s). Heartbeat every 15s
-# reports .bun/cache counts + latest package. Debug: BUN_INSTALL_VERBOSE=1.
+# No --verbose by default (BuildKit clips at ~200KiB/s). Heartbeat every 15s:
+# package new/recent + proc CPU/IO deltas + children + touched paths + log tail.
+# Debug HTTP: --build-arg BUN_INSTALL_VERBOSE=1
 RUN chmod +x /tmp/bun-install-with-progress.sh \
   && /tmp/bun-install-with-progress.sh \
   && echo "==> [2/6] bun install done"
