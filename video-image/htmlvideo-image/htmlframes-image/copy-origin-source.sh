@@ -53,9 +53,12 @@ fi
 if [ -d "${hyperframes_bak_path}/skills/aiflow-build-frame-html" ]; then
   cp -r "${hyperframes_bak_path}/skills/aiflow-build-frame-html" "${target_path}/skills/"
 fi
-mkdir -p ${build_assets_path}/scripts/lib
+
+mkdir -p ${target_path}/scripts/
 echo "cp -r ${origin_source_path}/scripts/package-subpaths.mjs ${target_path}/scripts/"
 cp -r ${origin_source_path}/scripts/package-subpaths.mjs ${target_path}/scripts/
+
+mkdir -p ${build_assets_path}/scripts/lib
 cp ${script_source_path}/skills/faceless-explainer/scripts/frame-packets.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/build-frame.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/tokens.mjs ${build_assets_path}/scripts/lib/
