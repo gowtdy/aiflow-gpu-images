@@ -3,7 +3,12 @@
 Non-interactive HyperFrames project scaffold + BRIEF.md writer.
 
 Runs `npx hyperframes init <data-dir>/<name> --non-interactive ...`, then writes
-BRIEF.md from CLI fields (no interactive brief questions).
+BRIEF.md from CLI fields (no interactive brief questions), writes --topic to
+capture/extracted/visible-text.txt, writes capture/extracted/tokens.json
+(title=topic, description=intent, empty colors/fonts), and when --preset is set
+runs `node build-frame.mjs --preset <name> --videodir <project>` (→ frame.md),
+then invokes `/aiflow-build-storyboard` (→ STORYBOARD.md) and
+`/aiflow-build-frame` (→ compositions/frames/*.html).
 
 Debug / sample run (edit flags in the wrapper):
 
@@ -39,6 +44,8 @@ Defaults:
 --tone — narrative voice (not visual style_preset):
   humorous, warm, serious, calm-authoritative, enthusiastic, provocative, deadpan, conversational
 
+--preset — frame preset name (presetName for build-frame.mjs) → BRIEF style_preset:
+
 CLI --topic → BRIEF message:
 CLI --tone  → BRIEF tone:
 ## Intent / ## Notes are auto-fused from structured fields (no --intent / --note).
@@ -52,7 +59,10 @@ import os
 import shutil
 import subprocess
 import sys
+import time
+from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
+from typing import Iterator
 
 # ---------------------------------------------------------------------------
 # Constants / maps
@@ -154,6 +164,25 @@ TONE_LABELS = {
 
 KNOWN_TONES = frozenset(TONE_LABELS)
 
+# frame-presets folder names (build-frame.mjs --preset / BRIEF style_preset)
+KNOWN_PRESETS = frozenset(
+    {
+        "biennale-yellow",
+        "blockframe",
+        "blue-professional",
+        "bold-poster",
+        "broadside",
+        "capsule",
+        "cartesian",
+        "claude",
+        "cobalt-grid",
+        "coral",
+        "creative-mode",
+        "daisy-days",
+        "editorial-forest",
+    }
+)
+
 ASPECT_NOTES = {
     "1920x1080": "landscape 16:9",
     "1080x1920": "portrait 9:16",
@@ -189,6 +218,118 @@ HARDCODED_FRONTMATTER = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def log_progress(msg: str) -> None:
+    """Progress line for operators watching long pipelines."""
+    print(f"[progress] {msg}", file=sys.stderr, flush=True)
+
+
+def format_duration(seconds: float) -> str:
+    """Human-readable duration for timing logs."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, sec = divmod(seconds, 60)
+    if minutes < 60:
+        return f"{int(minutes)}m{sec:04.1f}s"
+    hours, minutes = divmod(int(minutes), 60)
+    return f"{hours}h{minutes:02d}m{sec:04.1f}s"
+
+
+def log_timing_summary(
+    timings: list[dict[str, object]],
+    *,
+    total_seconds: float,
+    ok: bool,
+) -> None:
+    """Print per-step timing table + total."""
+    log_progress("──── timing summary ────")
+    if not timings:
+        log_progress("  (no steps recorded)")
+    else:
+        name_width = max(len(str(t["name"])) for t in timings)
+        for t in timings:
+            status = "ok  " if t["ok"] else "FAIL"
+            elapsed = format_duration(float(t["seconds"]))
+            log_progress(
+                f"  [{t['index']}/{t['total']}] {elapsed:>10}  {status}  "
+                f"{str(t['name']):<{name_width}}"
+            )
+        recorded = sum(float(t["seconds"]) for t in timings)
+        log_progress(f"  {'steps':>12}  {format_duration(recorded):>10}")
+    status = "DONE" if ok else "FAIL"
+    log_progress(f"  {'total':>12}  {format_duration(total_seconds):>10}  {status}")
+    log_progress("────────────────────────")
+
+
+@contextmanager
+def step_progress(
+    index: int,
+    total: int,
+    name: str,
+    timings: list[dict[str, object]] | None = None,
+) -> Iterator[list[bool]]:
+    """Log step start/end with elapsed time; append to ``timings`` when given.
+
+    Yields a one-element list ``ok``; set ``ok[0] = True`` before leaving the
+    block on success. Early ``return`` / error paths leave it False → FAIL.
+    """
+    log_progress(f"[{index}/{total}] START  {name}")
+    t0 = time.monotonic()
+    ok: list[bool] = [False]
+    try:
+        yield ok
+    finally:
+        elapsed = time.monotonic() - t0
+        status = "DONE " if ok[0] else "FAIL "
+        log_progress(
+            f"[{index}/{total}] {status} {name} ({format_duration(elapsed)})"
+        )
+        if timings is not None:
+            timings.append(
+                {
+                    "index": index,
+                    "total": total,
+                    "name": name,
+                    "seconds": round(elapsed, 3),
+                    "ok": ok[0],
+                }
+            )
+
+
+class StepTracker:
+    """Derive step totals from a planned name list; advance with ``next()``.
+
+    Keep the plan list and ``with steps.next()`` calls in sync — on success,
+    ``check_complete()`` warns if counts diverge (common while debugging).
+    """
+
+    def __init__(
+        self,
+        names: list[str],
+        timings: list[dict[str, object]] | None = None,
+    ) -> None:
+        self.names = names
+        self.total = len(names)
+        self.timings = timings
+        self._i = 0
+
+    def next(self) -> AbstractContextManager[list[bool]]:
+        if self._i >= self.total:
+            raise RuntimeError(
+                f"step overflow: plan has {self.total} steps, "
+                f"but next() called for step {self._i + 1}"
+            )
+        name = self.names[self._i]
+        self._i += 1
+        return step_progress(self._i, self.total, name, self.timings)
+
+    def check_complete(self) -> None:
+        if self._i != self.total:
+            log_progress(
+                f"warning: planned {self.total} steps but executed {self._i} "
+                f"(update the plan list or add/remove a steps.next() call)"
+            )
 
 
 def yaml_quote(value: str) -> str:
@@ -321,6 +462,22 @@ def build_notes(
     return notes
 
 
+def render_tokens(*, topic: str, intent: str) -> str:
+    return (
+        json.dumps(
+            {
+                "title": topic,
+                "description": intent,
+                "colors": [],
+                "fonts": [],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n"
+    )
+
+
 def render_brief(
     *,
     topic: str,
@@ -331,6 +488,7 @@ def render_brief(
     angles: list[str],
     tone: str | None,
     audience: str | None,
+    preset: str | None,
     assets: list[str],
     customizations: list[str],
 ) -> str:
@@ -357,6 +515,8 @@ def render_brief(
         lines.append(f"tone: {tone}")
     if audience:
         lines.append(f"audience: {yaml_quote(audience)}")
+    if preset:
+        lines.append(f"style_preset: {preset}")
     lines.append("---")
     lines.append("")
 
@@ -439,6 +599,186 @@ def run_init(
     return proc.returncode
 
 
+def run_build_frame(project_dir: Path, *, preset: str) -> int:
+    """Run build-frame.mjs: node build-frame.mjs --preset <preset> --videodir <project>."""
+    script = Path(__file__).resolve().parent / "build-frame.mjs"
+    if not script.is_file():
+        print(f"error: build-frame.mjs not found: {script}", file=sys.stderr)
+        return 1
+
+    cmd = [
+        "node",
+        str(script),
+        "--preset",
+        preset,
+        "--videodir",
+        str(project_dir),
+    ]
+    print("+", " ".join(cmd), file=sys.stderr)
+    proc = subprocess.run(cmd)
+    return proc.returncode
+
+
+STORYBOARD_PROMPT = """\
+/aiflow-build-storyboard
+
+Work in this HyperFrames project directory. BRIEF.md, frame.md, and
+capture/extracted/visible-text.txt already exist — do not re-init, do not run
+build-frame, audio, or render.
+
+Follow the aiflow-build-storyboard skill: read BRIEF.md (message + intent),
+visible-text.txt, and frame.md; write STORYBOARD.md (outline frames with
+required narrative fields) and SCRIPT.md when narration is needed.
+
+flow is automation → autonomous: post a short frame-sequence summary as a
+heads-up and proceed without waiting for approval. Stop when the skill gate
+passes (STORYBOARD.md exists; SCRIPT.md when narration is needed).
+"""
+
+
+def run_aiflow_build_storyboard(project_dir: Path) -> int:
+    """Invoke Claude Code with /aiflow-build-storyboard to write STORYBOARD.md."""
+    frame_path = project_dir / "frame.md"
+    if not frame_path.is_file():
+        print(
+            f"error: frame.md missing before storyboard step: {frame_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    if shutil.which("claude") is None:
+        print(
+            "error: claude CLI not found on PATH "
+            "(needed to run /aiflow-build-storyboard)",
+            file=sys.stderr,
+        )
+        return 1
+
+    # -p/--print: non-interactive (print + exit). bypassPermissions: no tool prompts.
+    cmd = [
+        "claude",
+        "--print",
+        "--dangerously-skip-permissions",
+        "--permission-mode",
+        "bypassPermissions",
+        "--output-format",
+        "text",
+        STORYBOARD_PROMPT,
+    ]
+    print(
+        "+",
+        "claude --print --dangerously-skip-permissions "
+        "--permission-mode bypassPermissions --output-format text <prompt>",
+        file=sys.stderr,
+    )
+    print(
+        "run_aiflow_build_storyboard params:",
+        {
+            "cwd": str(project_dir),
+            "skill": "aiflow-build-storyboard",
+            "frame": str(frame_path),
+        },
+        flush=True,
+    )
+    proc = subprocess.run(cmd, cwd=str(project_dir))
+    if proc.returncode != 0:
+        return proc.returncode
+
+    storyboard_path = project_dir / "STORYBOARD.md"
+    if not storyboard_path.is_file():
+        print(
+            f"error: /aiflow-build-storyboard finished but STORYBOARD.md missing: "
+            f"{storyboard_path}",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
+FRAME_PROMPT = """\
+/aiflow-build-frame
+
+Work in this HyperFrames project directory. hyperframes.json, frame.md, and an
+outline-stage STORYBOARD.md already exist — do not re-init, do not invent a
+storyboard, do not run audio, assemble index, or render.
+
+Follow the aiflow-build-frame skill: Part 1 enrich STORYBOARD.md with time-coded
+shot sequences (skip sketch; autonomous), then Part 2 dispatch per-frame workers
+to write compositions/frames/*.html and mark each frame animated.
+
+flow is automation → autonomous: proceed without waiting for sketch confirmation.
+Stop when the skill gate passes (every frame status: animated).
+"""
+
+
+def run_aiflow_build_frame(project_dir: Path) -> int:
+    """Invoke Claude Code with /aiflow-build-frame to write frame HTML."""
+    frame_path = project_dir / "frame.md"
+    storyboard_path = project_dir / "STORYBOARD.md"
+    if not frame_path.is_file():
+        print(
+            f"error: frame.md missing before frame step: {frame_path}",
+            file=sys.stderr,
+        )
+        return 1
+    if not storyboard_path.is_file():
+        print(
+            f"error: STORYBOARD.md missing before frame step: {storyboard_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    if shutil.which("claude") is None:
+        print(
+            "error: claude CLI not found on PATH "
+            "(needed to run /aiflow-build-frame)",
+            file=sys.stderr,
+        )
+        return 1
+
+    # -p/--print: non-interactive (print + exit). bypassPermissions: no tool prompts.
+    cmd = [
+        "claude",
+        "--print",
+        "--dangerously-skip-permissions",
+        "--permission-mode",
+        "bypassPermissions",
+        "--output-format",
+        "text",
+        FRAME_PROMPT,
+    ]
+    print(
+        "+",
+        "claude --print --dangerously-skip-permissions "
+        "--permission-mode bypassPermissions --output-format text <prompt>",
+        file=sys.stderr,
+    )
+    print(
+        "run_aiflow_build_frame params:",
+        {
+            "cwd": str(project_dir),
+            "skill": "aiflow-build-frame",
+            "frame": str(frame_path),
+            "storyboard": str(storyboard_path),
+        },
+        flush=True,
+    )
+    proc = subprocess.run(cmd, cwd=str(project_dir))
+    if proc.returncode != 0:
+        return proc.returncode
+
+    frames_dir = project_dir / "compositions" / "frames"
+    html_frames = sorted(frames_dir.glob("*.html")) if frames_dir.is_dir() else []
+    if not html_frames:
+        print(
+            f"error: /aiflow-build-frame finished but no compositions/frames/*.html: "
+            f"{frames_dir}",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     epilog = """
 aspect ↔ resolution ↔ destination
@@ -451,6 +791,8 @@ aspect ↔ resolution ↔ destination
   how-to concept listicle comparison narrative problem-solution
 
 --tone: humorous warm serious calm-authoritative enthusiastic provocative deadpan conversational
+
+--preset: frame presetName (e.g. capsule, claude) → BRIEF style_preset:
 
 --topic maps to BRIEF message:; Intent/Notes are auto-generated.
 """.strip()
@@ -513,6 +855,10 @@ aspect ↔ resolution ↔ destination
     p.add_argument("--tone", help="Narrative tone (e.g. humorous)")
     p.add_argument("--audience", help="Who will watch")
     p.add_argument(
+        "--preset",
+        help="Frame presetName for build-frame.mjs → BRIEF style_preset: (e.g. capsule)",
+    )
+    p.add_argument(
         "--asset",
         action="append",
         default=[],
@@ -543,6 +889,7 @@ aspect ↔ resolution ↔ destination
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    print(f"[debug] args: {vars(args)}", file=sys.stderr)
 
     if args.video and args.audio:
         print("error: cannot use --video and --audio together", file=sys.stderr)
@@ -567,9 +914,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.tone:
         warn_unknown("tone", args.tone, KNOWN_TONES)
 
+    preset = args.preset.strip() if args.preset else None
+    if preset:
+        warn_unknown("preset", preset, KNOWN_PRESETS)
+
     data_dir = Path(args.data_dir).expanduser().resolve()
     project_dir = data_dir / args.name
     brief_path = project_dir / "BRIEF.md"
+    extracted_dir = project_dir / "capture" / "extracted"
+    visible_text_path = extracted_dir / "visible-text.txt"
+    tokens_path = extracted_dir / "tokens.json"
+    intent = build_intent(
+        topic,
+        args.audience,
+        angles,
+        args.tone,
+        args.length,
+        args.language,
+        destination,
+        aspect,
+    )
 
     if args.dry_run:
         brief = (
@@ -584,6 +948,7 @@ def main(argv: list[str] | None = None) -> int:
                 angles=angles,
                 tone=args.tone,
                 audience=args.audience,
+                preset=preset,
                 assets=list(args.assets or []),
                 customizations=list(args.customizations or []),
             )
@@ -593,10 +958,33 @@ def main(argv: list[str] | None = None) -> int:
             "dry_run": True,
             "project": str(project_dir),
             "brief": str(brief_path),
+            "visible_text": str(visible_text_path),
+            "tokens": str(tokens_path),
             "resolution": resolution,
             "destination": destination,
             "aspect": aspect,
+            "preset": preset,
+            "build_frame": (
+                f"node build-frame.mjs --preset {preset} --videodir {project_dir}"
+                if preset
+                else None
+            ),
+            "build_storyboard": (
+                "claude --print --dangerously-skip-permissions "
+                "--permission-mode bypassPermissions --output-format text "
+                "/aiflow-build-storyboard  # cwd=project"
+                if preset
+                else None
+            ),
+            "build_aiflow_frame": (
+                "claude --print --dangerously-skip-permissions "
+                "--permission-mode bypassPermissions --output-format text "
+                "/aiflow-build-frame  # cwd=project"
+                if preset
+                else None
+            ),
             "brief_preview": brief,
+            "tokens_preview": json.loads(render_tokens(topic=topic, intent=intent)),
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json else brief)
         return 0
@@ -606,6 +994,30 @@ def main(argv: list[str] | None = None) -> int:
     if project_dir.exists() and any(project_dir.iterdir()):
         print(f"error: directory already exists and is not empty: {project_dir}", file=sys.stderr)
         return 1
+
+    # Pipeline plan — total is derived from this list (add/remove names here).
+    step_names = [
+        "hyperframes init",
+        "write BRIEF.md",
+        "write visible-text.txt",
+        "write tokens.json",
+    ]
+    if preset:
+        step_names.extend(
+            [
+                f"build-frame.mjs (--preset {preset})",
+                "aiflow-build-storyboard → STORYBOARD.md",
+                "aiflow-build-frame → compositions/frames",
+            ]
+        )
+    timings: list[dict[str, object]] = []
+    steps = StepTracker(step_names, timings)
+    pipeline_t0 = time.monotonic()
+    pipeline_ok = False
+    log_progress(
+        f"pipeline START  project={project_dir} steps={steps.total}"
+        + (f" preset={preset}" if preset else "")
+    )
 
     print(
         "run_init params:",
@@ -623,81 +1035,193 @@ def main(argv: list[str] | None = None) -> int:
         },
         flush=True,
     )
-    rc = run_init(
-        project_dir,
-        example=args.example,
-        resolution=resolution,
-        video=args.video,
-        audio=args.audio,
-        skip_transcribe=args.skip_transcribe,
-        whisper_model=args.whisper_model,
-        whisper_language=args.whisper_language,
-        tailwind=args.tailwind,
-        skip_skills=args.skip_skills,
-    )
-    if rc != 0:
-        print(f"error: hyperframes init failed with exit code {rc}", file=sys.stderr)
-        return rc
-
-    if not project_dir.is_dir():
-        print(f"error: init did not create project directory: {project_dir}", file=sys.stderr)
-        return 1
-
     try:
-        if args.brief_file:
-            if not args.brief_file.is_file():
-                print(f"error: --brief-file not found: {args.brief_file}", file=sys.stderr)
+        with steps.next() as ok:
+            rc = run_init(
+                project_dir,
+                example=args.example,
+                resolution=resolution,
+                video=args.video,
+                audio=args.audio,
+                skip_transcribe=args.skip_transcribe,
+                whisper_model=args.whisper_model,
+                whisper_language=args.whisper_language,
+                tailwind=args.tailwind,
+                skip_skills=args.skip_skills,
+            )
+            if rc != 0:
+                print(f"error: hyperframes init failed with exit code {rc}", file=sys.stderr)
+                return rc
+
+            if not project_dir.is_dir():
+                print(
+                    f"error: init did not create project directory: {project_dir}",
+                    file=sys.stderr,
+                )
                 return 1
+            ok[0] = True
+
+        with steps.next() as ok:
+            try:
+                if args.brief_file:
+                    if not args.brief_file.is_file():
+                        print(
+                            f"error: --brief-file not found: {args.brief_file}",
+                            file=sys.stderr,
+                        )
+                        return 1
+                    print(
+                        "copy brief_file:",
+                        {
+                            "src": str(args.brief_file),
+                            "dst": str(brief_path),
+                        },
+                        flush=True,
+                    )
+                    shutil.copyfile(args.brief_file, brief_path)
+                else:
+                    print(
+                        "render_brief params:",
+                        {
+                            "topic": topic,
+                            "destination": destination,
+                            "aspect": aspect,
+                            "language": args.language,
+                            "length": args.length,
+                            "angles": angles,
+                            "tone": args.tone,
+                            "audience": args.audience,
+                            "preset": preset,
+                            "assets": list(args.assets or []),
+                            "customizations": list(args.customizations or []),
+                        },
+                        flush=True,
+                    )
+                    brief = render_brief(
+                        topic=topic,
+                        destination=destination,
+                        aspect=aspect,
+                        language=args.language,
+                        length=args.length,
+                        angles=angles,
+                        tone=args.tone,
+                        audience=args.audience,
+                        preset=preset,
+                        assets=list(args.assets or []),
+                        customizations=list(args.customizations or []),
+                    )
+                    brief_path.write_text(brief, encoding="utf-8")
+            except OSError as e:
+                print(f"error: failed to write BRIEF.md: {e}", file=sys.stderr)
+                return 1
+            ok[0] = True
+
+        with steps.next() as ok:
+            try:
+                print(
+                    "write visible-text:",
+                    {
+                        "path": str(visible_text_path),
+                        "topic": topic,
+                    },
+                    flush=True,
+                )
+                extracted_dir.mkdir(parents=True, exist_ok=True)
+                visible_text_path.write_text(topic + "\n", encoding="utf-8")
+            except OSError as e:
+                print(f"error: failed to write visible-text.txt: {e}", file=sys.stderr)
+                return 1
+            ok[0] = True
+
+        with steps.next() as ok:
+            try:
+                tokens = render_tokens(topic=topic, intent=intent)
+                print(
+                    "write tokens:",
+                    {
+                        "path": str(tokens_path),
+                        "title": topic,
+                        "description": intent,
+                    },
+                    flush=True,
+                )
+                tokens_path.write_text(tokens, encoding="utf-8")
+            except OSError as e:
+                print(f"error: failed to write tokens.json: {e}", file=sys.stderr)
+                return 1
+            ok[0] = True
+
+        if preset:
             print(
-                "copy brief_file:",
+                "run_build_frame params:",
                 {
-                    "src": str(args.brief_file),
-                    "dst": str(brief_path),
+                    "preset": preset,
+                    "videodir": str(project_dir),
                 },
                 flush=True,
             )
-            shutil.copyfile(args.brief_file, brief_path)
-        else:
-            print(
-                "render_brief params:",
-                {
-                    "topic": topic,
-                    "destination": destination,
-                    "aspect": aspect,
-                    "language": args.language,
-                    "length": args.length,
-                    "angles": angles,
-                    "tone": args.tone,
-                    "audience": args.audience,
-                    "assets": list(args.assets or []),
-                    "customizations": list(args.customizations or []),
-                },
-                flush=True,
-            )
-            brief = render_brief(
-                topic=topic,
-                destination=destination,
-                aspect=aspect,
-                language=args.language,
-                length=args.length,
-                angles=angles,
-                tone=args.tone,
-                audience=args.audience,
-                assets=list(args.assets or []),
-                customizations=list(args.customizations or []),
-            )
-            brief_path.write_text(brief, encoding="utf-8")
-    except OSError as e:
-        print(f"error: failed to write BRIEF.md: {e}", file=sys.stderr)
-        return 1
+            with steps.next() as ok:
+                rc = run_build_frame(project_dir, preset=preset)
+                if rc != 0:
+                    print(
+                        f"error: build-frame failed with exit code {rc}",
+                        file=sys.stderr,
+                    )
+                    return rc
+                ok[0] = True
+
+            with steps.next() as ok:
+                rc = run_aiflow_build_storyboard(project_dir)
+                if rc != 0:
+                    print(
+                        f"error: aiflow-build-storyboard failed with exit code {rc}",
+                        file=sys.stderr,
+                    )
+                    return rc
+                ok[0] = True
+
+            with steps.next() as ok:
+                rc = run_aiflow_build_frame(project_dir)
+                if rc != 0:
+                    print(
+                        f"error: aiflow-build-frame failed with exit code {rc}",
+                        file=sys.stderr,
+                    )
+                    return rc
+                ok[0] = True
+
+        steps.check_complete()
+        pipeline_ok = True
+    finally:
+        total_seconds = time.monotonic() - pipeline_t0
+        log_timing_summary(timings, total_seconds=total_seconds, ok=pipeline_ok)
 
     if args.json:
+        storyboard_path = project_dir / "STORYBOARD.md"
+        frames_dir = project_dir / "compositions" / "frames"
+        html_frames = (
+            sorted(str(p) for p in frames_dir.glob("*.html"))
+            if frames_dir.is_dir()
+            else []
+        )
         print(
             json.dumps(
                 {
                     "ok": True,
                     "project": str(project_dir),
                     "brief": str(brief_path),
+                    "visible_text": str(visible_text_path),
+                    "tokens": str(tokens_path),
+                    "preset": preset,
+                    "frame": str(project_dir / "frame.md") if preset else None,
+                    "storyboard": (
+                        str(storyboard_path) if storyboard_path.is_file() else None
+                    ),
+                    "frames": html_frames if preset else None,
+                    "timings": {
+                        "steps": timings,
+                        "total_seconds": round(total_seconds, 3),
+                    },
                 },
                 ensure_ascii=False,
             )

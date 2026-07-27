@@ -9,6 +9,7 @@ huggingface-hub==1.7.1
 transformers==5.8.0
 accelerate==1.13.0
 fasttext-numpy2>=0.10.4
+sentencepiece
 
 # Audio processing
 torchcodec==0.11.1

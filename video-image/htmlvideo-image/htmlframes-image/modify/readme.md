@@ -18,7 +18,18 @@
     package/cli/src/templates/_shared/AGENTS.md
 
 
-  4、
-  
+  4、调整 build_assets/scripts/build-frame.mjs 路径默认值
+    - hyperframesDir：必须通过 --videodir <dir> 参数传入（不再默认 "."）
+    - presetDir：默认改为 /app/hyperframes/skills/hyperframes-creative/frame-presets
+    脚本：python3 modify/patch-build-frame.py
 
-    
+  5、调整 build_assets/scripts/assemble-index.mjs 路径参数
+    - hyperframesDir：必须通过 --videodir <dir> 参数传入（替换原 --hyperframes，不再默认 "."）
+    - bgmDefaultVolume 引入改为 /app/hyperframes/skills/media-use/audio/scripts/lib/bgm.mjs
+    脚本：python3 modify/patch-assemble-index.py
+
+  6、调整 build_assets/scripts/transitions.mjs 路径参数
+    - runInject / runVerify 中 hyperframesDir：必须通过 --videodir <dir> 参数传入
+      （替换原 --hyperframes，不再默认 "."）
+    脚本：python3 modify/patch-transitions.py
+

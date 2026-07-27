@@ -2,22 +2,42 @@
 # Debug wrapper for init_with_brief.py — edit flags below, then:
 #   bash build_assets/scripts/run_init_with_brief_example.sh
 # Extra args are forwarded (e.g. --dry-run, --json, --data-dir /tmp/videos).
+# After init completes, runs assemble-index.mjs → <project>/index.html,
+# then transitions.mjs inject + verify for inter-frame transitions.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_SCRIPT="${SCRIPT_DIR}/init_with_brief.py"
+ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
+TRANSITIONS_SCRIPT="${SCRIPT_DIR}/transitions.mjs"
 
-exec python3 "${INIT_SCRIPT}" \
-  --name stock-selection-guide \
-  --example blank \
-  --skip-skills \
-  --topic "Pick a stock systematically with a 4-step funnel screen" \
-  --aspect 1920x1080 \
-  --language en \
-  --length 40s \
-  --angle practitioner \
-  --angle how-to \
-  --tone humorous \
-  --audience "everyday investors" \
-  "$@"
+NAME="first-video"
+DATA_DIR="/app/videos"
+PROJECT_DIR="${DATA_DIR}/${NAME}"
+
+#python3 "${INIT_SCRIPT}" \
+#  --name "${NAME}" \
+#  --data-dir "${DATA_DIR}" \
+#  --example blank \
+#  --skip-skills \
+#  --topic "如何选择一支股票？" \
+#  --aspect 1920x1080 \
+#  --language zh \
+#  --length 40s \
+#  --angle practitioner \
+#  --angle how-to \
+#  --tone humorous \
+#  --audience "everyday investors" \
+#  --preset capsule \
+#  "$@"
+#
+#echo "assemble-index → ${PROJECT_DIR}/index.html"
+#node "${ASSEMBLE_SCRIPT}" --videodir "${PROJECT_DIR}"
+
+echo "transitions inject → ${PROJECT_DIR}/index.html"
+node "${TRANSITIONS_SCRIPT}" inject --videodir "${PROJECT_DIR}"
+
+echo "transitions verify → ${PROJECT_DIR}/index.html"
+node "${TRANSITIONS_SCRIPT}" verify --videodir "${PROJECT_DIR}"
+
