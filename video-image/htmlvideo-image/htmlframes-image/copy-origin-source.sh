@@ -26,6 +26,11 @@ echo "copy packages"
 echo "cp -r ${origin_source_path}/packages ${target_path}"
 cp -r ${origin_source_path}/packages ${target_path}
 
+# Monorepo build scripts (producer/cli import package-subpaths.mjs at build time).
+echo "copy scripts"
+echo "cp -r ${origin_source_path}/scripts/package-subpaths.mjs ${target_path}"
+cp -r ${origin_source_path}/scripts/package-subpaths.mjs ${target_path}
+
 echo "copy registry"
 echo "cp -r ${origin_source_path}/registry ${target_path}"
 cp -r ${origin_source_path}/registry ${target_path}
@@ -49,6 +54,8 @@ if [ -d "${hyperframes_bak_path}/skills/aiflow-build-frame-html" ]; then
   cp -r "${hyperframes_bak_path}/skills/aiflow-build-frame-html" "${target_path}/skills/"
 fi
 mkdir -p ${build_assets_path}/scripts/lib
+echo "cp -r ${origin_source_path}/scripts/package-subpaths.mjs ${target_path}/scripts/"
+cp -r ${origin_source_path}/scripts/package-subpaths.mjs ${target_path}/scripts/
 cp ${script_source_path}/skills/faceless-explainer/scripts/frame-packets.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/build-frame.mjs ${build_assets_path}/scripts/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/tokens.mjs ${build_assets_path}/scripts/lib/
@@ -65,6 +72,7 @@ cp ${origin_source_path}/bun.lock ${origin_source_path}/package.json ${origin_so
 cp ${script_bak_path}/run_aiflow_video_pipeline.sh ${build_assets_path}/scripts/
 cp ${script_bak_path}/run_aiflow_build_skills.py ${build_assets_path}/scripts/
 cp ${script_bak_path}/init_with_brief.py ${build_assets_path}/scripts/
+
 
 echo "patch telemetry"
 bash modify/patch-telemetry.sh
