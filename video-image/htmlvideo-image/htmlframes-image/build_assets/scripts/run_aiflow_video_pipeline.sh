@@ -7,9 +7,10 @@
 #   1. init_with_brief.py                         → project + BRIEF + frame.md
 #   2. run_aiflow_build_skills.py --skill storyboard
 #   3. run_aiflow_build_skills.py --skill visual
-#   4. run_aiflow_build_skills.py --skill html    → compositions/frames/*.html
-#   5. assemble-index.mjs                         → index.html
-#   6. transitions.mjs inject + verify
+#   4. frame-packets.mjs                          → .hyperframes/frame-packets/
+#   5. run_aiflow_build_skills.py --skill html    → compositions/frames/*.html
+#   6. assemble-index.mjs                         → index.html
+#   7. transitions.mjs inject + verify
 #
 # Skills are separate invocations so steps can be inserted between them.
 # --dry-run stops after step 1 (no skills / assemble / transitions).
@@ -19,6 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_SCRIPT="${SCRIPT_DIR}/init_with_brief.py"
 SKILLS_SCRIPT="${SCRIPT_DIR}/run_aiflow_build_skills.py"
+FRAME_PACKETS_SCRIPT="${SCRIPT_DIR}/frame-packets.mjs"
 ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 TRANSITIONS_SCRIPT="${SCRIPT_DIR}/transitions.mjs"
 
@@ -52,7 +54,7 @@ python3 "${INIT_SCRIPT}" \
   "$@"
 
 if [[ "${DRY_RUN}" -eq 1 ]]; then
-  echo "dry-run: skipping skills / assemble / transitions"
+  echo "dry-run: skipping skills / frame-packets / assemble / transitions"
   exit 0
 fi
 
@@ -61,6 +63,9 @@ python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill storyboard
 
 echo "aiflow skill visual → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill visual
+
+echo "frame-packets → ${PROJECT_DIR}/.hyperframes/frame-packets"
+node "${FRAME_PACKETS_SCRIPT}" --project "${PROJECT_DIR}"
 
 echo "aiflow skill html → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill html
