@@ -85,18 +85,33 @@ proc_summary() {
     return
   fi
   local state utime stime cpu_s rss read_b write_b
-  state=$(awk '{print $3}' "/proc/${pid}/stat")
-  utime=$(awk '{print $14}' "/proc/${pid}/stat")
-  stime=$(awk '{print $15}' "/proc/${pid}/stat")
-  cpu_s=$(( (utime + stime) / 100 ))
-  rss=$(awk '/VmRSS:/ {print $2}' "/proc/${pid}/status" 2>/dev/null || echo 0)
+  # /proc/pid/stat: field2 is (comm) and may contain spaces — parse after ") ".
+  state=$(awk '{ sub(/^[^ ]+ \([^)]*\) /, ""); print $1 }' "/proc/${pid}/stat")
+  utime=$(awk '{ sub(/^[^ ]+ \([^)]*\) /, ""); print $12 }' "/proc/${pid}/stat")
+  stime=$(awk '{ sub(/^[^ ]+ \([^)]*\) /, ""); print $13 }' "/proc/${pid}/stat")
+  utime=${utime:-0}
+  stime=${stime:-0}
+  utime=${utime//[^0-9]/}
+  stime=${stime//[^0-9]/}
+  cpu_s=$(( (${utime:-0} + ${stime:-0}) / 100 ))
+
+  rss=$(awk '/^VmRSS:/ {print $2; exit}' "/proc/${pid}/status" 2>/dev/null)
+  rss=${rss:-0}
+  rss=${rss//[^0-9]/}
+
   read_b=0
   write_b=0
   if [[ -r "/proc/${pid}/io" ]]; then
-    read_b=$(awk '/read_bytes:/ {print $2}' "/proc/${pid}/io")
-    write_b=$(awk '/write_bytes:/ {print $2}' "/proc/${pid}/io")
+    # Exact $1 match — '/write_bytes:/' also hits cancelled_write_bytes.
+    read_b=$(awk '$1=="read_bytes:" {print $2; exit}' "/proc/${pid}/io")
+    write_b=$(awk '$1=="write_bytes:" {print $2; exit}' "/proc/${pid}/io")
   fi
-  echo "state=${state} cpu≈${cpu_s}s rss=$((rss / 1024))MB io_r=$((read_b / 1048576))MB io_w=$((write_b / 1048576))MB"
+  read_b=${read_b:-0}
+  write_b=${write_b:-0}
+  read_b=${read_b//[^0-9]/}
+  write_b=${write_b//[^0-9]/}
+
+  echo "state=${state:-?} cpu≈${cpu_s}s rss=$(( ${rss:-0} / 1024 ))MB io_r=$(( ${read_b:-0} / 1048576 ))MB io_w=$(( ${write_b:-0} / 1048576 ))MB"
 }
 
 children_summary() {
