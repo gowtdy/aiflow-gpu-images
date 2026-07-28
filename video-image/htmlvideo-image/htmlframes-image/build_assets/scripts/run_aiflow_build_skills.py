@@ -8,11 +8,13 @@ Skills (call separately — shell orchestrates order / inserts steps between):
   --skill storyboard  → /aiflow-build-storyboard  → STORYBOARD.md
   --skill visual      → /aiflow-build-frame-visual → shot sequences + ## Video direction
   --skill html        → /aiflow-build-frame-html   → compositions/frames/*.html
+  --skill verify      → /aiflow-verify-frame       → transitions + lint/check + snapshot
 
 Usage:
   python3 build_assets/scripts/run_aiflow_build_skills.py --videodir /app/videos/my-video --skill storyboard
   python3 build_assets/scripts/run_aiflow_build_skills.py --videodir /app/videos/my-video --skill visual
   python3 build_assets/scripts/run_aiflow_build_skills.py --videodir /app/videos/my-video --skill html
+  python3 build_assets/scripts/run_aiflow_build_skills.py --videodir /app/videos/my-video --skill verify
 """
 
 from __future__ import annotations
@@ -73,6 +75,25 @@ upstream — none on disk.
 
 flow is automation → autonomous: proceed without waiting for confirmation.
 Stop when the skill gate passes (every frame status: animated).
+"""
+
+VERIFY_PROMPT = """\
+/aiflow-verify-frame
+
+Work in this HyperFrames project directory. hyperframes.json, index.html,
+STORYBOARD.md, and compositions/frames/*.html already exist — do not re-init,
+do not assemble the index, do not invent a storyboard, do not render.
+
+Follow the aiflow-verify-frame skill: inject and verify transitions, run
+hyperframes lint and check, snapshot at frame midpoints, glance at
+snapshots/contact-sheet.jpg. If any command fails, surface stderr, make the
+cheapest safe edit to compositions/frames/NN-*.html, and rerun only the failed
+step. Treat caption #caption-word-* / .caption-line text_box_overflow of
+~1–4px as expected; only fix overflow on #el-NN-* frame elements.
+
+flow is automation → autonomous: proceed without waiting for approval.
+Stop when the skill gate passes (lint and check passed and the snapshots were
+inspected). Do not preview or render.
 """
 
 
@@ -322,18 +343,68 @@ def run_aiflow_build_frame_html(project_dir: Path) -> int:
     return 0
 
 
-SKILL_CHOICES = ("storyboard", "visual", "html")
+def run_aiflow_verify_frame(project_dir: Path) -> int:
+    """Invoke Claude Code with /aiflow-verify-frame to lint/check/snapshot."""
+    index_path = project_dir / "index.html"
+    frames_dir = project_dir / "compositions" / "frames"
+    html_frames = sorted(frames_dir.glob("*.html")) if frames_dir.is_dir() else []
+    if not index_path.is_file():
+        print(
+            f"error: index.html missing before verify step: {index_path}",
+            file=sys.stderr,
+        )
+        return 1
+    if not html_frames:
+        print(
+            f"error: compositions/frames/*.html missing before verify step: "
+            f"{frames_dir}",
+            file=sys.stderr,
+        )
+        return 1
+
+    err = require_claude()
+    if err is not None:
+        return err
+
+    print(
+        "run_aiflow_verify_frame params:",
+        {
+            "cwd": str(project_dir),
+            "skill": "aiflow-verify-frame",
+            "index": str(index_path),
+            "frames": len(html_frames),
+        },
+        flush=True,
+    )
+    rc = run_claude(project_dir, VERIFY_PROMPT)
+    if rc != 0:
+        return rc
+
+    contact_sheet = project_dir / "snapshots" / "contact-sheet.jpg"
+    if not contact_sheet.is_file():
+        print(
+            f"error: /aiflow-verify-frame finished but contact sheet missing: "
+            f"{contact_sheet}",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
+SKILL_CHOICES = ("storyboard", "visual", "html", "verify")
 
 SKILL_STEP_NAME = {
     "storyboard": "aiflow-build-storyboard → STORYBOARD.md",
     "visual": "aiflow-build-frame-visual → shot sequences",
     "html": "aiflow-build-frame-html → compositions/frames",
+    "verify": "aiflow-verify-frame → lint/check/snapshot",
 }
 
 SKILL_RUNNERS = {
     "storyboard": run_aiflow_build_storyboard,
     "visual": run_aiflow_build_frame_visual,
     "html": run_aiflow_build_frame_html,
+    "verify": run_aiflow_verify_frame,
 }
 
 
@@ -354,7 +425,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--skill",
         required=True,
         choices=SKILL_CHOICES,
-        help="Which skill to run: storyboard | visual | html",
+        help="Which skill to run: storyboard | visual | html | verify",
     )
     p.add_argument("--json", action="store_true", help="Print JSON result on success")
     return p.parse_args(argv)
@@ -383,7 +454,7 @@ def main(argv: list[str] | None = None) -> int:
             rc = runner(project_dir)
             if rc != 0:
                 print(
-                    f"error: aiflow-build-{skill} failed with exit code {rc}",
+                    f"error: aiflow-{skill} failed with exit code {rc}",
                     file=sys.stderr,
                 )
                 return rc
@@ -405,6 +476,7 @@ def main(argv: list[str] | None = None) -> int:
     html_frames = (
         sorted(str(p) for p in frames_dir.glob("*.html")) if frames_dir.is_dir() else []
     )
+    contact_sheet = project_dir / "snapshots" / "contact-sheet.jpg"
 
     if args.json:
         print(
@@ -417,6 +489,11 @@ def main(argv: list[str] | None = None) -> int:
                         str(storyboard_path) if storyboard_path.is_file() else None
                     ),
                     "frames": html_frames if skill == "html" else None,
+                    "contact_sheet": (
+                        str(contact_sheet)
+                        if skill == "verify" and contact_sheet.is_file()
+                        else None
+                    ),
                     "timings": {
                         "steps": timings,
                         "total_seconds": round(total_seconds, 3),
