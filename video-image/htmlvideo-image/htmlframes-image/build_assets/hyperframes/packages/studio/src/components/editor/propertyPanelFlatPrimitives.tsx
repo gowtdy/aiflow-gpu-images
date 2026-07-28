@@ -8,6 +8,8 @@ import {
   type PropertyValueTier,
 } from "./propertyPanelValueTier";
 
+export const FLAT_PREVIEW_GRID = "grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-1";
+
 /* ------------------------------------------------------------------ */
 /*  FlatRow — single-column label/value property row                   */
 /* ------------------------------------------------------------------ */
@@ -20,6 +22,7 @@ export function FlatRow({
   liveCommit,
   suffix,
   dropdown,
+  onPreview,
   onCommit,
   onReset,
 }: {
@@ -31,6 +34,7 @@ export function FlatRow({
   suffix?: ReactNode;
   /** Renders a trailing 10px caret-down, for select-backed rows. */
   dropdown?: boolean;
+  onPreview?: (nextValue: string) => void;
   onCommit: (nextValue: string) => void;
   onReset?: () => void;
 }) {
@@ -43,14 +47,16 @@ export function FlatRow({
           data-flat-row-value="true"
           className={`min-w-0 border-b pb-px font-mono text-[11px] ${VALUE_TIER_VALUE_CLASS[tier]} ${
             tier === "explicitCustom"
-              ? "border-transparent group-hover:border-panel-accent/35"
-              : "border-transparent group-hover:border-panel-border-input"
+              ? "border-panel-accent/30 group-hover:border-panel-accent/70"
+              : "border-panel-border-input/50 group-hover:border-panel-border-input"
           }`}
         >
           <CommitField
             value={value}
             disabled={disabled}
             liveCommit={liveCommit}
+            align="right"
+            onPreview={onPreview}
             onCommit={(nextValue) => {
               track("metric", label);
               onCommit(nextValue);

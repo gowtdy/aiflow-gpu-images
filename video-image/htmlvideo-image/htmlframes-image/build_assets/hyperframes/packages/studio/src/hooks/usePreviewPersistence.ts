@@ -133,7 +133,10 @@ export function usePreviewPersistence({
   if (!domEditSaveQueueRef.current) {
     domEditSaveQueueRef.current = createDomEditSaveQueue({
       onOpen: (event) => {
-        const message = "Auto-save is paused. Check your connection.";
+        const message =
+          event.statusCode === 409
+            ? "Save paused: this file changed elsewhere. Reload and review the latest version before reapplying your edit."
+            : "Auto-save is paused. Check your connection.";
         setDomEditSaveQueuePaused(message);
         showToastRef.current(message, "error");
         trackStudioEvent("save_queue_paused", {
@@ -205,13 +208,19 @@ export function usePreviewPersistence({
       // attributes onto the live DOM and re-runs the timeline at the SAME playhead,
       // falling back to reloadPreview for anything structural (split/delete undo),
       // multi-file, sub-comp, or a permanent soft-reload failure.
-      applyUndoRestoreToPreview(
+      const strategy = applyUndoRestoreToPreview(
         previewIframeRef.current,
         activeCompPathRef.current,
         restore.files,
         usePlayerStore.getState().currentTime,
         reloadPreview,
       );
+      if (strategy === "full") {
+        const player = usePlayerStore.getState();
+        player.setElements([]);
+        player.setSelectedElementId(null);
+        player.setTimelineReady(false);
+      }
     },
     [previewIframeRef, activeCompPathRef, reloadPreview],
   );

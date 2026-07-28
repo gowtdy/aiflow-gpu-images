@@ -6,10 +6,12 @@ import type {
 } from "./types";
 import { stableClipId } from "./clipTree";
 import { swallow } from "./diagnostics";
-import { readElementPlaybackRate } from "./media";
+import { readElementPlaybackRate, readElementPlaybackStart } from "./media";
 import { resolveCssStackingContextId } from "./stackingContext";
 import { createRuntimeStartTimeResolver } from "./startResolver";
 import { isSceneLikeCompositionId } from "../slideshow/index.js";
+import { COMPOSITION_CONTRACT_VERSION } from "../compositionContract.js";
+import { runtimeProtocolMetadata } from "./protocol.js";
 
 const AUTHORED_DURATION_ATTR = "data-hf-authored-duration";
 const AUTHORED_END_ATTR = "data-hf-authored-end";
@@ -410,6 +412,8 @@ export function collectRuntimeTimelinePayload(params: {
       parentCompositionId: compositionContext.parentCompositionId,
       nodePath: null,
       compositionSrc: toAbsoluteAssetUrl(node.getAttribute("data-composition-src")),
+      playbackStart: readElementPlaybackStart(node),
+      playbackRate: readElementPlaybackRate(node),
       assetUrl: resolveNodeAssetUrl(node),
       timelineRole: node.getAttribute("data-timeline-role"),
       timelineLabel: node.getAttribute("data-timeline-label"),
@@ -519,6 +523,8 @@ export function collectRuntimeTimelinePayload(params: {
             parentCompositionId: rootCompositionIdForGsap,
             nodePath: null,
             compositionSrc: null,
+            playbackStart: readElementPlaybackStart(el),
+            playbackRate: readElementPlaybackRate(el),
             assetUrl: null,
             timelineRole: el.getAttribute("data-timeline-role"),
             timelineLabel: el.getAttribute("data-timeline-label"),
@@ -574,6 +580,8 @@ export function collectRuntimeTimelinePayload(params: {
         parentCompositionId: rootCompositionIdForGsap,
         nodePath: null,
         compositionSrc: null,
+        playbackStart: readElementPlaybackStart(el),
+        playbackRate: readElementPlaybackRate(el),
         assetUrl: null,
         timelineRole,
         timelineLabel: el.getAttribute("data-timeline-label"),
@@ -630,8 +638,11 @@ export function collectRuntimeTimelinePayload(params: {
     ? Number.POSITIVE_INFINITY
     : Math.max(1, Math.ceil(safeDuration * Math.max(1, params.canonicalFps)));
   return {
+    ...runtimeProtocolMetadata(params.canonicalFps),
     source: "hf-preview",
     type: "timeline",
+    compositionContractVersion: COMPOSITION_CONTRACT_VERSION,
+    durationSeconds: shouldEmitNonDeterministicInf ? Number.POSITIVE_INFINITY : safeDuration,
     durationInFrames,
     clips,
     scenes,

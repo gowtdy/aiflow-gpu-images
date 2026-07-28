@@ -22,7 +22,6 @@ services:
       - TZ=Asia/Shanghai
     env_file:
       - /home/aigc/data/env/.env_arkkey
-      - /home/aigc/data/env/.env_mqdb
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro

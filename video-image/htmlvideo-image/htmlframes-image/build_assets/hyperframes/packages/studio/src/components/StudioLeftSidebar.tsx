@@ -19,6 +19,7 @@ export interface StudioLeftSidebarProps {
   lintFindingCount?: number;
   lintFindingsByFile?: Map<string, { count: number; messages: string[] }>;
   onAddAssetToTimeline?: (path: string) => void;
+  onAddCompositionToTimeline?: (path: string) => void;
 }
 
 // fallow-ignore-next-line complexity
@@ -32,11 +33,12 @@ export function StudioLeftSidebar({
   lintFindingCount,
   lintFindingsByFile,
   onAddAssetToTimeline,
+  onAddCompositionToTimeline,
 }: StudioLeftSidebarProps) {
   const {
     leftCollapsed,
     leftWidth,
-    setLeftWidth,
+    adjustPanelWidth,
     toggleLeftSidebar,
     handlePanelResizeStart,
     handlePanelResizeMove,
@@ -150,6 +152,7 @@ export function StudioLeftSidebar({
         onAddBlock={onAddBlock}
         onPreviewBlock={onPreviewBlock}
         onAddAssetToTimeline={onAddAssetToTimeline}
+        onAddCompositionToTimeline={onAddCompositionToTimeline}
       />
       {/* Vertical resize divider: 3px visible seam, 8px pointer-capture zone via
           the absolutely-positioned inner hit area. The outer element is w-[3px] so
@@ -170,8 +173,7 @@ export function StudioLeftSidebar({
           if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
           e.preventDefault();
           const delta = e.key === "ArrowLeft" ? -16 : 16;
-          const maxLeft = Math.floor(window.innerWidth * 0.5);
-          setLeftWidth(Math.max(160, Math.min(maxLeft, leftWidth + delta)));
+          adjustPanelWidth("left", delta);
         }}
       >
         {/* Expanded hit zone: 8px wide, centered on the 3px seam */}

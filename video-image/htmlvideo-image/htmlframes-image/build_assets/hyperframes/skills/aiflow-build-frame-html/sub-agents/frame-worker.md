@@ -51,26 +51,67 @@ Generic seek-safety + structure live in `hyperframes-core` (read it; not restate
 - **Build the whole shot — reveal across the full `duration`, never front-load.** Dumping the whole canvas in the first ~25% then holding it is exactly what reads as a PowerPoint slide. Instead reveal each piece — a line, a layer, a node, a stat — **as the `voiceover` reaches it** (on a silent frame, on the beat), sequencing reveals across the shot and especially the back ~50%, with the macro camera move running underneath. **Only EXITS are banned** — a non-final frame unmounts mid-frame, so an exit tween truncates and reads as a glitch (the root transition IS the exit); mid-shot reveals are free and seek-safe. The lone exception is a note marked as a deliberate hold / stillness frame: there, an entrance + a quiet settle is right (a held read beats bad motion).
 - **Implement the shot sequence faithfully — every Scene is a timeline phase.** The Scene lines ARE the build: map each Scene onto a phase of the one timeline, each piece revealing as the `voiceover` reaches it. For each **named motion** in a Scene, open its rule recipe under `RULES_DIR/<id>.md` and reproduce its mechanics — **never name-guess** (a guess loses the signature move). The **`blueprint:` template** (`../hyperframes-animation/blueprints/<id>.md`) gives the overall shape; read it and keep its **signature move** recognizable, then instantiate it with this frame's invented content / timing. `compose` → no template; sequence the shot straight from the Scene lines. Whichever, never front-load the whole sequence at `t=0` — pace the reveals to the voiceover.
 - **Design each element by its `roles`** (the `focal` is the hero): a `foreground subject` is the thing the eye lands on — respect the 83% keep-out, lay text around it, not over it; a `background` is full-bleed and dimmed ~30–50% so foreground content stays legible; `supporting` elements (labels, secondary shapes, ambient layers) stay quiet. These are **invented** — you build them in SVG / CSS / type, not from a file. **If the user supplied a real image** named in `roles:`/`focal:`, place it: a `[video]` candidate (`.mp4`) renders as a **muted** `<video class="clip">` (`data-start` / `data-duration` / `data-track-index` per the core clip contract), a **direct child of the frame root** — never nested in another timed element, or the renderer freezes it; an untagged image → `<img>`.
+- **Same-track clips must not overlap in time** (`timeline_track_too_dense`). `data-track-index` is a temporal lane, not paint order — stacking is CSS `z-index`. Concurrent layers (background + floating pills + hero) need **distinct tracks**, **or** nest non-timed décor inside **one** parent `class="clip"` (children: no `data-start` / `data-duration` / `data-track-index`). Prefer nesting full-duration ambient wallpaper (pills / stickers / grain extras) inside the background clip rather than N sibling full-duration clips on track `0`.
+- **Glow / badge décor is not a second timed sibling on the same track.** Soft glow, bloom, punch-glow, badge-glow, and accent lines that sit *with* a hero/badge are concurrent layers. Model them one of two ways — never as another `class="clip"` sharing the hero's `data-track-index` while windows overlap:
+  - **Prefer nest:** one parent `class="clip"` owns the time window; glow/badge children have **no** `data-start` / `data-duration` / `data-track-index` (matches `ambient-glow-bloom`). Drive their motion with GSAP on the parent timeline.
+  - **Or split tracks:** each concurrent timed element gets its own `data-track-index`; stacking is CSS `z-index`, not track number.
+  - Side-by-side badges that are both on screen at once (e.g. left + right) **must** use distinct tracks (or one parent clip wrapping both). A comment like `<!-- Track 3: glow + accent -->` does **not** make same-track overlap legal.
+
+  **Wrong** — glow/accent as timed siblings on the same track (assemble fails with `timeline_track_too_dense`):
+
+  ```html
+  <div id="badge" class="clip" data-start="5.5" data-duration="1.5" data-track-index="3">✓ PASS</div>
+  <div id="badge-glow" class="clip" data-start="5.5" data-duration="1.0" data-track-index="3"></div>
+
+  <div id="punch-glow" class="clip" data-start="2.5" data-duration="1.0" data-track-index="3"></div>
+  <div id="accent" class="clip" data-start="3.0" data-duration="1.0" data-track-index="3"></div>
+  <!-- 3.0–3.5 overlaps even if you meant "Track 3 group" -->
+
+  <div id="badge-l" class="clip" data-start="4.2" data-duration="1.8" data-track-index="5">Good co.</div>
+  <div id="badge-r" class="clip" data-start="2.8" data-duration="3.2" data-track-index="5">Worth it</div>
+  ```
+
+  **Right A — nest décor (preferred for glow):**
+
+  ```html
+  <div id="badge-wrap" class="clip" data-start="5.5" data-duration="1.5" data-track-index="3">
+    <div id="badge-glow"></div>
+    <div id="badge">✓ PASS</div>
+  </div>
+  ```
+
+  **Right B — distinct tracks:**
+
+  ```html
+  <div id="badge" class="clip" data-start="5.5" data-duration="1.5" data-track-index="3">✓ PASS</div>
+  <div id="badge-glow" class="clip" data-start="5.5" data-duration="1.0" data-track-index="4"></div>
+
+  <div id="badge-l" class="clip" data-start="4.2" data-duration="1.8" data-track-index="5">Good co.</div>
+  <div id="badge-r" class="clip" data-start="2.8" data-duration="3.2" data-track-index="6">Worth it</div>
+  ```
+- **Root must carry `data-duration` (aiflow / transitions inject).** HyperFrames-core allows omitting root `data-duration` when a GSAP timeline is present; **this workflow does not**. The frame root (`id="root"`) must declare `data-duration="<packet duration>"` (the block's `duration` verbatim) alongside `data-composition-id="<frame_id>"`. Downstream `transitions.mjs inject` extends that attr (and tail clips) on outgoing frames — a root without `data-duration` fails inject.
 
 ## Workflow
 
 1. **Read** — `hyperframes-core`'s composition contract (the structural law), then `frame.md` (the look) and your `## Frame N` block (the shot sequence + `blueprint:` / `focal:` / `roles:`). **Then read the blueprint template** `../hyperframes-animation/blueprints/<id>.md` (skip if `compose`) for the shot's shape and signature move, and **open the rule recipe `RULES_DIR/<id>.md` for every named motion** in the Scene lines (plus the shared `../hyperframes-animation/examples/<id>.html` when the recipe is unclear): you reproduce these mechanics, not improvise them. Internalize the self-check codes below before you write — most lethal is **template transport**: every `<style>` + `<script>` (including the gsap load) must live INSIDE `<template>`, because the runtime only clones template contents and the assembled-project `lint` / `check` gate can miss an unwired blank sub-composition.
 2. **Design** — turn the time-coded shot sequence into a timeline using `frame.md`'s components and type ramp: each Scene window becomes a phase revealed on its `voiceover` cue, each named motion built from the recipe you just read, the blueprint's signature move kept recognizable. Invent the visual elements the Scene lines describe (the diagram, the hero word, the metaphor), and find a visual idea that reinforces the beat, not a literal restyle of the words.
-3. **Author** — write the full sub-composition to `compositions/frames/<frame_id>.html` (rewrite to iterate; last write wins). `<template>`-wrapped root carrying `data-composition-id="<frame_id>"` and styled via `#root` (not a class on that element — see the self-check below), exactly one `gsap.timeline({ paused: true })` registered at `window.__timelines["<frame_id>"]`, built synchronously — per the core contract.
+3. **Author** — write the full sub-composition to `compositions/frames/<frame_id>.html` (rewrite to iterate; last write wins). `<template>`-wrapped root: `id="root"`, `data-composition-id="<frame_id>"`, **`data-duration="<duration>"`** (packet `duration` verbatim — required by this workflow's transitions injector; do not omit even though core allows GSAP-inferred length), styled via `#root` (not a class on that element — see the self-check below), exactly one `gsap.timeline({ paused: true })` registered at `window.__timelines["<frame_id>"]`, built synchronously — per the core contract.
 4. **Self-check, then finish** — re-read your file against the checklist below and fix in place. Writing the file is your terminal action; you do **not** run the CLI.
 
 ## Self-check before finishing (you do NOT run the CLI)
 
 You **can't** meaningfully run `hyperframes lint` / `check` here: they operate on the **assembled project** (the `index.html` graph / bundle), and your frame isn't wired in yet — so they report on _other_ files, not yours (a false green). The **orchestrator** does not assemble or lint in this skill — those run **downstream after assembly**, and may **re-dispatch you with the finding** if your frame fails (see **Retry** above). So get it right on write: re-read your file against this checklist before finishing — the codes in parens are `hyperframes lint`'s and what the orchestrator may cite back (the rules behind them live in `hyperframes-core`):
 
-- `missing_template_wrapper` / `missing_composition_id` — root is `<template>`-wrapped and carries `data-composition-id="<frame_id>"`.
+- `missing_template_wrapper` / `missing_composition_id` / `missing_root_duration` — root is `<template>`-wrapped and carries **all three**: `id="root"`, `data-composition-id="<frame_id>"`, and `data-duration="<duration>"` (packet duration). Example: `<div id="root" data-composition-id="01-hook" data-width="1920" data-height="1080" data-duration="5">`. Omitting `data-duration` breaks `transitions inject` on outgoing frames.
 - **Template transport** — every `<style>` and `<script>` block, including the GSAP load, lives inside `<template>`.
 - `subcomposition_root_styled_by_class` — **style the frame root via `#root`, never a class on the `data-composition-id` element**: at render a class on the root gets scoped to a descendant selector that can't match it, so the **whole scene renders unstyled** (Studio preview still looks right — trust this rule, not the preview). Descendants use plain selectors.
-- **Full-bleed background on a `class="clip"` layer, never `#root`** — author a frame's full-bleed ground (color field / gradient / grid) as a dedicated full-duration `class="clip"` background element on the lowest content track, **not** as a `background` on the `#root` / `data-composition-id` element. At assembly the frame root is clip-gated to its scene window, so a background painted on the root is not a dependable full-frame ground — dark content can end up over the host `body` (black) and render invisible. The video's base ground is painted separately by the assembler from `frame.md`'s `canvas` color onto the index `#root`; your full-bleed clip rides on top of it.
+- **Full-bleed background on a `class="clip"` layer, never `#root`** — author a frame's full-bleed ground (color field / gradient / grid) as **one** dedicated full-duration `class="clip"` background element on the lowest content track, **not** as a `background` on the `#root` / `data-composition-id` element. Other full-duration ambience (floating pills, stickers, extra grain) goes **inside** that clip or on **higher** tracks — never as sibling clips sharing the same track. At assembly the frame root is clip-gated to its scene window, so a background painted on the root is not a dependable full-frame ground — dark content can end up over the host `body` (black) and render invisible. The video's base ground is painted separately by the assembler from `frame.md`'s `canvas` color onto the index `#root`; your full-bleed clip rides on top of it.
 - `clip_missing_data_attrs` — every `class="clip"` element has `data-start` / `data-duration` / `data-track-index`.
+- `timeline_track_too_dense` — clips on the same `data-track-index` must not overlap in time (adjacent touch OK). Track ≠ z-index; stacking is CSS `z-index`. Concurrent layers → distinct tracks, **or** nest non-timed décor inside one parent `class="clip"` (children without timing attrs). Never put N full-duration siblings on track `0`. Especially: never put `*-glow` / accent / paired badges as overlapping timed siblings on one track — nest or split tracks (see Frame constraints).
 - `timeline_not_paused` / `timeline_not_registered` — one paused timeline, registered at `window.__timelines["<frame_id>"]`.
 - `css_transition_used` + repeat / yoyo / non-deterministic logic — none present (the renderer seeks frame-by-frame).
 - `gsap_css_transform_conflict` — never put a CSS `transform` (e.g. `translateY(-50%)` centering) on an element you then GSAP-animate a transform prop on (`x` / `y` / `scale` / `rotation`): GSAP overwrites the whole `transform` and silently drops the CSS centering (the element jumps). Center with `margin` / `inset` (or `top`/`left` + offset), fold the offset into the tween via `xPercent` / `yPercent`, or use `fromTo` (the rule exempts it).
+- `gsap_non_transform_motion` — never tween layout/reflow props: `fontSize`, `letterSpacing`, `wordSpacing`, `width`, `height`, `top`, `left`, `margin*`, `padding*`, or `roundProps` (they snap to device pixels under seek-by-frame capture and stutter on ease-out tails). Type-size change (display→headline, `12cqw`→`5cqw`): fix CSS `font-size` at the **larger** size, keep `display: inline-block` (or block), tween `scale: endSize/startSize` (e.g. `5/12`). Never `tl.to(..., { fontSize: "5cqw" })`. Size-change beats map to `counting-dynamic-scale`'s START_SIZE/END_SIZE → scale recipe when named.
 - **Hero visibility** — the main subject is visible by `t <= 0.5s`; entrance tweens use `fromTo` instead of CSS-hidden starting states.
 - `exit_animation_on_non_final_scene` — no exit tween unless you are the final frame.
 - **No front-loading (not a slide)** — the shot's pieces reveal on their `voiceover` cues across the duration, not all fired at `t=0`; a non-still frame keeps content arriving rather than holding a full canvas from ~25%.

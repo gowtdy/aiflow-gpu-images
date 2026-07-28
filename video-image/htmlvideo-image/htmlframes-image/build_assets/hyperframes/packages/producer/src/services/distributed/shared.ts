@@ -32,6 +32,13 @@ export type DistributedFormat = "mp4" | "mov" | "png-sequence" | "webm";
 export const PLAN_VIDEOS_META_RELATIVE_PATH = "meta/videos.json";
 
 /**
+ * Relative path of the normalized audio artifact written into a distributed
+ * plan. Keep writers and transport readers coupled through this contract
+ * rather than duplicating a filename literal.
+ */
+export const PLAN_AUDIO_RELATIVE_PATH = "audio.aac";
+
+/**
  * On-disk shape of `<planDir>/meta/videos.json`. The engine's
  * `ExtractedFrames` shape carries an absolute `outputDir`, a `framePaths`
  * Map, and potentially an open file descriptor — none of those survive
@@ -99,11 +106,14 @@ export interface SyntheticRenderJobInput {
   bitrate?: string;
   videoFrameFormat?: VideoFrameFormat;
   outputResolution?: RenderConfig["outputResolution"];
+  outputResolutionAspectAgnostic?: RenderConfig["outputResolutionAspectAgnostic"];
   hdrMode: RenderConfig["hdrMode"];
   strictness?: RenderConfig["strictness"];
   entryFile: string;
   logger?: ProducerLogger;
   producerConfig?: RenderConfig["producerConfig"];
+  /** Render-time overrides consumed by the plan browser probe. */
+  variables?: RenderConfig["variables"];
 }
 
 /**
@@ -120,6 +130,7 @@ export function buildSyntheticRenderJob(input: SyntheticRenderJobInput): RenderJ
     videoBitrate: input.bitrate,
     videoFrameFormat: input.videoFrameFormat,
     outputResolution: input.outputResolution,
+    outputResolutionAspectAgnostic: input.outputResolutionAspectAgnostic,
     // Distributed mode hard-pins to software GPU. The plan-time validator
     // refuses to fan out otherwise.
     useGpu: false,
@@ -129,6 +140,7 @@ export function buildSyntheticRenderJob(input: SyntheticRenderJobInput): RenderJ
     hdrMode: input.hdrMode,
     strictness: input.strictness,
     producerConfig: input.producerConfig,
+    variables: input.variables,
   };
   return createRenderJob(renderConfig);
 }

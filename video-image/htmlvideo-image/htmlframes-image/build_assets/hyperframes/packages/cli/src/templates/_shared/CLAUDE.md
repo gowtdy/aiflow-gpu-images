@@ -9,6 +9,8 @@
 
 The domain skills (`/hyperframes-core`, `/hyperframes-animation`, `/hyperframes-keyframes`, `/hyperframes-creative`, `/hyperframes-cli`, `/media-use`, `/hyperframes-registry`, `/figma`) and the full capability map live inside `/hyperframes` — it is the single source of truth for which skill handles which intent.
 
+**Changing how real footage or images look or reveal?** Load `/media-use` and its media-treatment policy before editing, even when the request only says dark, flat, boring, retro, private, or “make the reveal cooler.” Use canonical media treatments and seek-safe motion; do not improvise equivalent CSS/SVG filters or overlays.
+
 > **Tailwind v4 projects** (`hyperframes init --tailwind`): see `/hyperframes-core` → `references/tailwind.md`.
 
 > **Skill missing or stale?** Run `npx hyperframes skills update <name>` to install/refresh
@@ -33,7 +35,7 @@ npx hyperframes docs <topic> # reference docs in terminal
 > In Claude Code, always run it with `run_in_background: true`. Never run it as a foreground
 > command — it will time out and the server will die, breaking the browser preview.
 
-> **Pinned CLI version.** These scripts pin an exact `hyperframes@X.Y.Z` so this project re-renders identically over time. Weeks later that pin lags fixes shipped since. To move up: `npx hyperframes@latest upgrade --project --check` (shows the delta), then `npx hyperframes@latest upgrade --project` to rewrite the pins. Always unpinned — the pinned script re-runs the old version against itself.
+> **Pinned CLI version.** These scripts pin an exact `hyperframes@X.Y.Z` so this project re-renders identically over time. Weeks later that pin lags fixes shipped since. To move up: `npx hyperframes@latest upgrade --project . --check` (shows the delta), then `npx hyperframes@latest upgrade --project .` to rewrite the pins. Always unpinned — the pinned script re-runs the old version against itself.
 
 ## Documentation
 

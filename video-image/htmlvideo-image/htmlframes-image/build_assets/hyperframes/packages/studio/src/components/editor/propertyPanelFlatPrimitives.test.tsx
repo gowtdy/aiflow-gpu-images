@@ -38,6 +38,16 @@ describe("FlatRow", () => {
     act(() => root.unmount());
   });
 
+  it("right-aligns the value input — the flat inspector's justify-between row layout leaves a left-aligned value looking stranded at the edge of its own box", () => {
+    const { host, root } = renderInto(
+      <FlatRow label="Size" value="72px" tier="explicitCustom" onCommit={vi.fn()} />,
+    );
+    const input = host.querySelector("input");
+    expect(input?.className).toContain("text-right");
+    expect(input?.className).not.toContain("text-left");
+    act(() => root.unmount());
+  });
+
   it("renders the explicitCustom tier with a mint value and a reset button", () => {
     const onReset = vi.fn();
     const { host, root } = renderInto(
@@ -78,6 +88,40 @@ describe("FlatRow", () => {
     });
     expect(onCommit).toHaveBeenCalledWith("24px");
     act(() => root.unmount());
+  });
+
+  it("persists a rapid numeric arrow-key burst as one commit", () => {
+    vi.useFakeTimers();
+    const onCommit = vi.fn();
+    const onPreview = vi.fn();
+    const { host, root } = renderInto(
+      <FlatRow
+        label="Size"
+        value="22px"
+        tier="explicitDefault"
+        liveCommit
+        onPreview={onPreview}
+        onCommit={onCommit}
+      />,
+    );
+    const input = host.querySelector<HTMLInputElement>("input");
+    if (!input) throw new Error("expected an input");
+
+    for (let step = 0; step < 8; step += 1) {
+      act(() => {
+        input.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowUp" }));
+      });
+    }
+
+    expect(input.value).toBe("30px");
+    expect(onPreview).toHaveBeenLastCalledWith("30px");
+    expect(onCommit).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(250));
+    expect(onCommit).toHaveBeenCalledOnce();
+    expect(onCommit).toHaveBeenCalledWith("30px");
+
+    act(() => root.unmount());
+    vi.useRealTimers();
   });
 });
 
@@ -1115,20 +1159,20 @@ describe("FlatSelectRow — label/value options", () => {
     const { host, root } = renderInto(
       <FlatSelectRow
         label="Preset"
-        value="natural-lift"
+        value="clean-studio"
         options={[
           { value: "neutral", label: "Neutral" },
-          { value: "natural-lift", label: "Natural Lift" },
-          { value: "fresh-pop", label: "Fresh Pop" },
+          { value: "clean-studio", label: "Clean Studio" },
+          { value: "bright-pop", label: "Bright Pop" },
         ]}
         tier="explicitCustom"
         onChange={vi.fn()}
       />,
     );
     const select = host.querySelector("select");
-    expect(select?.value).toBe("natural-lift");
+    expect(select?.value).toBe("clean-studio");
     const options = Array.from(host.querySelectorAll("option")).map((o) => o.textContent);
-    expect(options).toEqual(["Neutral", "Natural Lift", "Fresh Pop"]);
+    expect(options).toEqual(["Neutral", "Clean Studio", "Bright Pop"]);
     act(() => root.unmount());
   });
 

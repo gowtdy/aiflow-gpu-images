@@ -1,21 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
 import { PropertyPanel } from "./editor/PropertyPanel";
 import { LayersPanel } from "./editor/LayersPanel";
 import { CaptionPropertyPanel } from "../captions/components/CaptionPropertyPanel";
 import { BlockParamsPanel } from "./editor/BlockParamsPanel";
 import { RenderQueue } from "./renders/RenderQueue";
 import { SlideshowPanel } from "./panels/SlideshowPanel";
-import type { SceneInfo } from "./panels/SlideshowPanel";
-import { VariablesPanel } from "./panels/VariablesPanel";
+import { VariablesPanel, type StudioEditPersistenceProps } from "./panels/VariablesPanel";
 import { PanelTabButton } from "./PanelTabButton";
 import { usePreviewVariablesStore } from "../hooks/previewVariablesStore";
 import type { RenderJob } from "./renders/useRenderQueue";
 import type { BlockParam } from "@hyperframes/core/registry";
-import type { IframeWindow } from "../player/lib/playbackTypes";
-import { STUDIO_INSPECTOR_PANELS_ENABLED } from "./editor/manualEditingAvailability";
+import {
+  STUDIO_FLAT_INSPECTOR_ENABLED,
+  STUDIO_INSPECTOR_PANELS_ENABLED,
+} from "./editor/manualEditingAvailability";
 import type { Composition } from "@hyperframes/sdk";
 import type { EditHistoryKind } from "../utils/editHistory";
 import { useSlideshowPersist, type UseSlideshowPersistParams } from "../hooks/useSlideshowPersist";
+import { useSlideshowTabState } from "../hooks/useSlideshowTabState";
 import { DesignPanelPromoteProvider } from "./DesignPanelPromoteProvider";
 
 import { useStudioPlaybackContext, useStudioShellContext } from "../contexts/StudioContext";
@@ -29,11 +31,14 @@ import {
   EMPTY_COLOR_GRADING_SCOPE_RESULT,
   type ColorGradingScope,
 } from "./studioColorGradingScope";
-import type { BackgroundRemovalProgress } from "./editor/propertyPanelTypes";
+import type {
+  AddMediaOverlayHandler,
+  BackgroundRemovalProgress,
+} from "./editor/propertyPanelTypes";
 import { timelineKeysForSelections, type ToggleHiddenHandler } from "../utils/studioHelpers";
 import { useInspectorSplitResize } from "../hooks/useInspectorSplitResize";
 
-export interface StudioRightPanelProps {
+export interface StudioRightPanelProps extends StudioEditPersistenceProps {
   designPanelActive: boolean;
   activeBlockParams?: {
     blockName: string;
@@ -48,6 +53,19 @@ export interface StudioRightPanelProps {
   /** Dependencies for the Slideshow persist callback, threaded from App.tsx. */
   sdkSession: Composition | null;
   publishSdkSession: NonNullable<UseSlideshowPersistParams["publishSdkSession"]>;
+  /**
+   * Forces THIS `sdkSession` to re-open from disk. DesignPanelPromoteProvider
+   * opens its own separate SDK session scoped to the selected element's own
+   * file (needed so promoting inside a sub-composition binds a variable there,
+   * not on the host) — for a top-level selection that's the SAME file this
+   * session already has open, so a write through that other session leaves
+   * this one holding stale in-memory content. The self-write-echo registry
+   * that normally suppresses redundant reloads is keyed by file path only, not
+   * by session instance, so it wrongly treats the sibling session's write as
+   * "our own echo" and never reloads on its own — this must be called
+   * explicitly after such a write.
+   */
+  forceReloadSdkSession?: () => void;
   reloadPreview: () => void;
   domEditSaveTimestampRef: MutableRefObject<number>;
   recordEdit: (entry: {
@@ -56,6 +74,7 @@ export interface StudioRightPanelProps {
     files: Record<string, { before: string; after: string }>;
   }) => Promise<void>;
   onToggleElementHidden?: ToggleHiddenHandler;
+  onAddMediaOverlay?: AddMediaOverlayHandler;
 }
 
 // fallow-ignore-next-line complexity
@@ -68,18 +87,21 @@ export function StudioRightPanel({
   onToggleRecording,
   sdkSession,
   publishSdkSession,
+  forceReloadSdkSession,
   reloadPreview,
   domEditSaveTimestampRef,
   recordEdit,
   onToggleElementHidden,
+  onAddMediaOverlay,
 }: StudioRightPanelProps) {
   const {
     rightWidth,
-    setRightWidth,
+    adjustPanelWidth,
     rightPanelTab,
     setRightPanelTab,
     rightInspectorPanes,
     toggleRightInspectorPane,
+    setExclusiveRightInspectorPane,
     handlePanelResizeStart,
     handlePanelResizeMove,
     handlePanelResizeEnd,
@@ -150,6 +172,7 @@ export function StudioRightPanel({
     readProjectFile,
     writeProjectFile,
     fileTree,
+    editingFile,
   } = useFileManagerContext();
 
   // Discrete ops (toggle, reorder, add/delete, hotspot): persist immediately,
@@ -198,22 +221,13 @@ export function StudioRightPanel({
   const renderJobs = renderQueue.jobs as RenderJob[];
   const inspectorTabActive = rightPanelTab === "design" || rightPanelTab === "layers";
 
-  // Derive scene list from the live clip manifest in the preview iframe.
-  // fallow-ignore-next-line complexity
-  const slideshowScenes = useMemo<SceneInfo[]>(() => {
-    try {
-      const win = previewIframeRef.current?.contentWindow as IframeWindow | null;
-      return (win?.__clipManifest?.scenes ?? []).map((s) => ({
-        id: s.id,
-        label: s.label,
-        start: s.start,
-        duration: s.duration,
-      }));
-    } catch {
-      return [];
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewIframeRef, rightPanelTab, refreshKey]);
+  const { isSlideshowComposition, slideshowScenes } = useSlideshowTabState({
+    editingFileContent: editingFile?.content,
+    previewIframeRef,
+    refreshKey,
+    rightPanelTab,
+    setRightPanelTab,
+  });
   const designPaneOpen = inspectorTabActive && rightInspectorPanes.design && designPanelActive;
   const layersPaneOpen =
     inspectorTabActive && rightInspectorPanes.layers && STUDIO_INSPECTOR_PANELS_ENABLED;
@@ -221,6 +235,13 @@ export function StudioRightPanel({
   const handleInspectorPaneButtonClick = (pane: "design" | "layers") => {
     if (!inspectorTabActive) {
       setRightPanelTab(pane);
+      return;
+    }
+    // Flat inspector: Layers always renders full-height by itself (see the
+    // render branch below), so the two panes are mutually exclusive here —
+    // otherwise both tabs could show "active" while only one actually shows.
+    if (STUDIO_FLAT_INSPECTOR_ENABLED) {
+      setExclusiveRightInspectorPane(pane);
       return;
     }
     toggleRightInspectorPane(pane);
@@ -325,6 +346,7 @@ export function StudioRightPanel({
       recordEdit={recordEdit}
       reloadPreview={reloadPreview}
       domEditSaveTimestampRef={domEditSaveTimestampRef}
+      forceReloadSharedSdkSession={forceReloadSdkSession}
     >
       <PropertyPanel
         projectId={projectId}
@@ -355,6 +377,7 @@ export function StudioRightPanel({
         onRemoveTextField={handleDomRemoveTextField}
         onAskAgent={handleAskAgent}
         onImportAssets={handleImportFiles}
+        onAddMediaOverlay={onAddMediaOverlay}
         fontAssets={fontAssets}
         onImportFonts={handleImportFonts}
         previewIframeRef={previewIframeRef}
@@ -441,7 +464,7 @@ export function StudioRightPanel({
           e.preventDefault();
           // Panel is right-anchored: ArrowLeft grows it, ArrowRight shrinks it.
           const delta = e.key === "ArrowLeft" ? 16 : -16;
-          setRightWidth(Math.max(160, Math.min(600, rightWidth + delta)));
+          adjustPanelWidth("right", delta);
         }}
       >
         {/* Expanded hit zone: 8px wide, centered on the 3px seam */}
@@ -450,7 +473,7 @@ export function StudioRightPanel({
         <div className="absolute top-1/2 left-0 h-[52px] w-[3px] -translate-y-1/2 bg-white/12 transition-colors group-hover:bg-white/18 group-active:bg-white/24" />
       </div>
       <div
-        className="flex min-w-0 flex-shrink-0 flex-col overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900"
+        className="flex min-w-0 flex-shrink-0 flex-col overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950"
         style={{ width: rightWidth }}
       >
         {captionEditMode ? (
@@ -480,12 +503,14 @@ export function StudioRightPanel({
                 active={rightPanelTab === "renders"}
                 onClick={() => setRightPanelTab("renders")}
               />
-              <PanelTabButton
-                label="Slideshow"
-                tooltip="Slideshow branching editor"
-                active={rightPanelTab === "slideshow"}
-                onClick={() => setRightPanelTab("slideshow")}
-              />
+              {isSlideshowComposition && (
+                <PanelTabButton
+                  label="Slideshow"
+                  tooltip="Slideshow branching editor"
+                  active={rightPanelTab === "slideshow"}
+                  onClick={() => setRightPanelTab("slideshow")}
+                />
+              )}
               <PanelTabButton
                 label="Variables"
                 tooltip="Template variables — declare, preview with values"
@@ -502,7 +527,7 @@ export function StudioRightPanel({
                   compositionPath={activeBlockParams.compositionPath}
                   onClose={onCloseBlockParams ?? (() => {})}
                 />
-              ) : rightPanelTab === "slideshow" ? (
+              ) : rightPanelTab === "slideshow" && isSlideshowComposition ? (
                 <SlideshowPanel
                   scenes={slideshowScenes}
                   onPersist={onPersistSlideshow}
@@ -516,7 +541,7 @@ export function StudioRightPanel({
                   domEditSaveTimestampRef={domEditSaveTimestampRef}
                   recordEdit={recordEdit}
                 />
-              ) : layersPaneOpen && designPaneOpen ? (
+              ) : layersPaneOpen && designPaneOpen && !STUDIO_FLAT_INSPECTOR_ENABLED ? (
                 <div ref={splitContainerRef} className="flex h-full min-h-0 min-w-0 flex-col">
                   <div
                     className="min-h-[120px] overflow-hidden"
