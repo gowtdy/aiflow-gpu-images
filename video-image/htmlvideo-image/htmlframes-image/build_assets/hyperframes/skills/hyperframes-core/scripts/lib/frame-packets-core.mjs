@@ -115,7 +115,7 @@ export function buildFramePackets({
   projectDir,
   storyboardPath = join(projectDir, "STORYBOARD.md"),
   outDir = join(projectDir, ".hyperframes", "frame-packets"),
-  maxPacketBytes = 48_000,
+  maxPacketBytes = 100_000, // gowtd-mod: frame-packets maxPacketBytes
   animationDir,
   corePath,
   deltaPath,
