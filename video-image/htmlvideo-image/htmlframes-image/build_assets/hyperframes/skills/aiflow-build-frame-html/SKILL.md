@@ -28,7 +28,7 @@ If `.hyperframes/frame-packets/` or `_role.md` is missing, or a storyboard frame
 
 ## Build Frames
 
-Goal: Build every storyboard frame as an HTML composition.
+Goal: Build every storyboard frame as an HTML composition and assemble the playable video.
 
 Before dispatch, read `../hyperframes-core/references/subagent-dispatch.md`. Consume the pre-built packets under `.hyperframes/frame-packets/` — do not rebuild them. Dispatch one sub-agent per frame, in parallel if possible; otherwise run workers in waves. Each worker gets exactly one frame: its prompt carries `_role.md` and that frame's packet — paste both in full, or hand the two file paths for the worker to read first (equivalent; the worker starts from exactly those two documents either way) — plus a dispatch context with `PROJECT_DIR`, `frame_id`, whether the frame has a **confirmed sketch** on disk (the worker dresses that layout rather than redrawing it — frame-worker core § When a confirmed sketch exists), canvas size, and caption status + keep-out band if captions are enabled.
 
@@ -38,9 +38,12 @@ Workers read only their packet and `frame.md`; they never open `STORYBOARD.md` o
 
 As each worker returns, the orchestrator marks that frame as `animated` in `STORYBOARD.md`.
 
-Do **not** assemble `index.html` in this skill.
+Assemble the index:
+`node /app/scripts/assemble-index.mjs --videodir ${videodir}`
 
-**Gate:** every frame is marked `animated`.
+If a command fails, surface stderr and stop — don't pile on recovery commands. Fix it yourself: the cheapest safe edit to `compositions/frames/NN-*.html`, then rerun the failed check.
+
+**Gate:** every frame is marked `animated`, `index.html` exists.
 
 ---
 
