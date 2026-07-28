@@ -136,6 +136,7 @@ The frame is a **paused GSAP timeline seeked frame-by-frame**, so some "continuo
 - **Entrances use `fromTo`** — state the from-state explicitly so a seek to `t=0` lands the element correctly; never rely on a CSS-hidden start (it renders visible before the tween claims it, and flickers under seek).
 - **No CSS `transition` / `@keyframes` for motion** — CSS animation runs on the browser clock, independent of the HF seek clock; it desyncs and flickers. Drive all motion inside the paused GSAP timeline.
 - **Entrance + sequential reveal only — no mid-video exit.** The frame unmounts via the harness transition; that injected `transition_in` **is** the exit. Exit motion belongs only to the final frame. (Worker-built seam cuts in `../aiflow-build-frame-html/references/cut-catalog.md` are within-frame, not the frame's exit.)
+- **Type-size change is GSAP `scale`, never `fontSize`.** Do not write Scene lines that invite a font-size tween — e.g. "animates to 5cqw," "grows its font-size," "fontSize from display to headline." `cqw` / ramp tokens (`display`, `headline`) name the **CSS resting size**, not a tween property. When a hero shrinks or grows (display→headline, `12cqw`→`5cqw`): state the CSS size as the larger end, then name the motion as GSAP `scale` with the ratio (`scale 1 → 5/12`), and attach a rule id — prefer `counting-dynamic-scale` (START_SIZE/END_SIZE → scale) or an explicit scale settle. Example: *"三" shrinks via GSAP scale (CSS stays 12cqw; scale 1 → 5/12) (`counting-dynamic-scale` size recipe)* — never *"scales down to headline size (5cqw)"* alone.
 
 ## Forbidden — the failure modes
 
@@ -145,7 +146,7 @@ The frame is a **paused GSAP timeline seeked frame-by-frame**, so some "continuo
 
 **Bouncy:** `back.out` / `bounce.out` / `elastic.out` as the default entrance; hand-keyed overshoot. Fix with rule 1 (`power3` long-tail; overshoot only when explicitly playful).
 
-**Always:** no `repeat` / `yoyo`; no `Math.random` / `Date.now`; no all-elements-entering-simultaneously (sequence or stagger).
+**Always:** no `repeat` / `yoyo`; no `Math.random` / `Date.now`; no all-elements-entering-simultaneously (sequence or stagger); no Scene wording that treats `cqw` / type-ramp tokens as tween targets (that becomes `fontSize` and fails `gsap_non_transform_motion`).
 
 ## Naming motion in a shot — example
 
