@@ -91,3 +91,5 @@ echo "patch transitions --videodir"
 python3 modify/patch-transitions.py
 echo "patch frame-packets container paths"
 python3 modify/patch-frame-packets.py
+echo "patch frame-packets maxPacketBytes"
+python3 modify/patch-frame-packets-limit.py
