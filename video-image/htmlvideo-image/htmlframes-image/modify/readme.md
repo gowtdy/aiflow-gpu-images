@@ -38,3 +38,7 @@
     - SKILL_DIR：改为 /app/hyperframes/skills/aiflow-build-frame-html
     脚本：python3 modify/patch-frame-packets.py
 
+  8、调整 frame-packets-core.mjs 单包大小上限
+    - maxPacketBytes：48_000 → 100_000
+    脚本：python3 modify/patch-frame-packets-limit.py
+
