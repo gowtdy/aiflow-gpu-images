@@ -11,9 +11,12 @@
 #   5. run_aiflow_build_skills.py --skill html    → compositions/frames/*.html
 #   6. assemble-index.mjs                         → index.html
 #   7. transitions.mjs inject + verify
+#   8. npx hyperframes lint + check
+#   9. npx hyperframes snapshot --at <frame-midpoints>
+#  10. npx hyperframes render
 #
 # Skills are separate invocations so steps can be inserted between them.
-# --dry-run stops after step 1 (no skills / assemble / transitions).
+# --dry-run stops after step 1 (no skills / assemble / transitions / lint / check / snapshot / render).
 
 set -euo pipefail
 
@@ -23,6 +26,7 @@ SKILLS_SCRIPT="${SCRIPT_DIR}/run_aiflow_build_skills.py"
 FRAME_PACKETS_SCRIPT="${SCRIPT_DIR}/frame-packets.mjs"
 ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 TRANSITIONS_SCRIPT="${SCRIPT_DIR}/transitions.mjs"
+MIDPOINTS_SCRIPT="${SCRIPT_DIR}/frame-midpoints.mjs"
 
 NAME="second-video"
 DATA_DIR="/app/videos"
@@ -54,7 +58,7 @@ python3 "${INIT_SCRIPT}" \
   "$@"
 
 if [[ "${DRY_RUN}" -eq 1 ]]; then
-  echo "dry-run: skipping skills / frame-packets / assemble / transitions"
+  echo "dry-run: skipping skills / frame-packets / assemble / transitions / lint / check / snapshot / render"
   exit 0
 fi
 
@@ -78,3 +82,21 @@ node "${TRANSITIONS_SCRIPT}" inject --videodir "${PROJECT_DIR}"
 
 echo "transitions verify → ${PROJECT_DIR}/index.html"
 node "${TRANSITIONS_SCRIPT}" verify --videodir "${PROJECT_DIR}"
+
+echo "hyperframes lint → ${PROJECT_DIR}"
+npx hyperframes lint "${PROJECT_DIR}"
+
+echo "hyperframes check → ${PROJECT_DIR}"
+npx hyperframes check "${PROJECT_DIR}"
+
+echo "frame-midpoints → ${PROJECT_DIR}/index.html"
+AT="$(node "${MIDPOINTS_SCRIPT}" --videodir "${PROJECT_DIR}")"
+
+echo "hyperframes snapshot → ${PROJECT_DIR} --at ${AT}"
+npx hyperframes snapshot "${PROJECT_DIR}" --at "${AT}"
+
+echo "hyperframes render → ${PROJECT_DIR}/renders/${NAME}.mp4"
+npx hyperframes render "${PROJECT_DIR}" \
+  --quality high \
+  --output "${PROJECT_DIR}/renders/${NAME}.mp4"
+
