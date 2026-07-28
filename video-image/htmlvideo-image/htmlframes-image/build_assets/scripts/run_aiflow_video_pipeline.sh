@@ -74,8 +74,8 @@ node "${FRAME_PACKETS_SCRIPT}" --project "${PROJECT_DIR}"
 echo "aiflow skill html → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill html
 
-echo "assemble-index → ${PROJECT_DIR}/index.html"
-node "${ASSEMBLE_SCRIPT}" --videodir "${PROJECT_DIR}"
+#echo "assemble-index → ${PROJECT_DIR}/index.html"
+#node "${ASSEMBLE_SCRIPT}" --videodir "${PROJECT_DIR}"
 
 echo "transitions inject → ${PROJECT_DIR}/index.html"
 node "${TRANSITIONS_SCRIPT}" inject --videodir "${PROJECT_DIR}"
