@@ -86,10 +86,11 @@ do not assemble the index, do not invent a storyboard, do not render.
 
 Follow the aiflow-verify-frame skill: inject and verify transitions, run
 hyperframes lint and check, snapshot at frame midpoints, glance at
-snapshots/contact-sheet.jpg. If any command fails, surface stderr, make the
-cheapest safe edit to compositions/frames/NN-*.html, and rerun only the failed
-step. Treat caption #caption-word-* / .caption-line text_box_overflow of
-~1–4px as expected; only fix overflow on #el-NN-* frame elements.
+snapshots/contact-sheet.jpg (or contact-sheet-N.jpg when paginated >9 frames).
+If any command fails, surface stderr, make the cheapest safe edit to
+compositions/frames/NN-*.html, and rerun only the failed step. Treat caption
+#caption-word-* / .caption-line text_box_overflow of ~1–4px as expected; only
+fix overflow on #el-NN-* frame elements.
 
 flow is automation → autonomous: proceed without waiting for approval.
 Stop when the skill gate passes (lint and check passed and the snapshots were
@@ -343,6 +344,22 @@ def run_aiflow_build_frame_html(project_dir: Path) -> int:
     return 0
 
 
+def find_contact_sheets(project_dir: Path) -> list[Path]:
+    """Return snapshot contact sheets (single or paginated).
+
+    hyperframes snapshot writes ``contact-sheet.jpg`` when ≤9 frames fit on
+    one page; with more frames it paginates to ``contact-sheet-1.jpg``,
+    ``contact-sheet-2.jpg``, … (no unnumbered ``contact-sheet.jpg``).
+    """
+    snapshots = project_dir / "snapshots"
+    if not snapshots.is_dir():
+        return []
+    single = snapshots / "contact-sheet.jpg"
+    if single.is_file():
+        return [single]
+    return sorted(snapshots.glob("contact-sheet-*.jpg"))
+
+
 def run_aiflow_verify_frame(project_dir: Path) -> int:
     """Invoke Claude Code with /aiflow-verify-frame to lint/check/snapshot."""
     index_path = project_dir / "index.html"
@@ -380,11 +397,12 @@ def run_aiflow_verify_frame(project_dir: Path) -> int:
     if rc != 0:
         return rc
 
-    contact_sheet = project_dir / "snapshots" / "contact-sheet.jpg"
-    if not contact_sheet.is_file():
+    contact_sheets = find_contact_sheets(project_dir)
+    if not contact_sheets:
         print(
-            f"error: /aiflow-verify-frame finished but contact sheet missing: "
-            f"{contact_sheet}",
+            "error: /aiflow-verify-frame finished but contact sheet missing: "
+            f"{project_dir / 'snapshots' / 'contact-sheet.jpg'} "
+            "(or contact-sheet-N.jpg when paginated)",
             file=sys.stderr,
         )
         return 1
@@ -476,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
     html_frames = (
         sorted(str(p) for p in frames_dir.glob("*.html")) if frames_dir.is_dir() else []
     )
-    contact_sheet = project_dir / "snapshots" / "contact-sheet.jpg"
+    contact_sheets = find_contact_sheets(project_dir) if skill == "verify" else []
 
     if args.json:
         print(
@@ -490,9 +508,10 @@ def main(argv: list[str] | None = None) -> int:
                     ),
                     "frames": html_frames if skill == "html" else None,
                     "contact_sheet": (
-                        str(contact_sheet)
-                        if skill == "verify" and contact_sheet.is_file()
-                        else None
+                        str(contact_sheets[0]) if contact_sheets else None
+                    ),
+                    "contact_sheets": (
+                        [str(p) for p in contact_sheets] if contact_sheets else None
                     ),
                     "timings": {
                         "steps": timings,
