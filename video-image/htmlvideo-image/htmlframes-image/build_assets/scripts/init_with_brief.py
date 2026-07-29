@@ -8,8 +8,8 @@ capture/extracted/visible-text.txt, writes capture/extracted/tokens.json
 (title=topic, description=intent, empty colors/fonts), and when --preset is set
 runs `node build-frame.mjs --preset <name> --videodir <project>` (→ frame.md).
 
-Stops at frame.md. Claude skill chain (storyboard → visual → html), assemble,
-and transitions are orchestrated by the wrapper:
+Stops at frame.md. Claude skill chain (storyboard → visual → html → verify),
+assemble, and transitions-inside-verify are orchestrated by the wrapper:
 
   bash build_assets/scripts/run_aiflow_video_pipeline.sh
   bash build_assets/scripts/run_aiflow_video_pipeline.sh --dry-run
@@ -809,8 +809,8 @@ def main(argv: list[str] | None = None) -> int:
                 else None
             ),
             "next": (
-                "run_aiflow_build_skills.py --skill {storyboard,visual,html} "
-                "→ assemble-index.mjs → transitions.mjs"
+                "run_aiflow_build_skills.py --skill {storyboard,visual,html,verify} "
+                "→ assemble-index.mjs (before verify)"
                 if preset
                 else None
             ),

@@ -22,7 +22,7 @@ If `STORYBOARD.md` or `frame.md` is missing, or visual design is incomplete (no 
 
 If `.hyperframes/frame-packets/` or `_role.md` is missing, or a storyboard frame has no matching packet → stop and report the blocker. Do **not** run `frame-packets.mjs` in this skill.
 
-**Out of scope:** `hyperframes init`, brief writing, storyboard narrative/script planning, writing shot sequences / `## Video direction`, `frame-packets.mjs`, `audio.mjs`, assemble `index.html`, transitions inject, `hyperframes lint` / `check` / `preview` / `render`.
+**Out of scope:** `hyperframes init`, brief writing, storyboard narrative/script planning, writing shot sequences / `## Video direction`, `frame-packets.mjs`, `audio.mjs`, assemble `index.html`, transitions inject, `hyperframes lint` / `check` / `preview` / `render`. Verification (transitions + lint/check + snapshot) is `/aiflow-verify-frame`.
 
 ---
 
