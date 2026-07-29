@@ -42,3 +42,9 @@
     - maxPacketBytes：48_000 → 100_000
     脚本：python3 modify/patch-frame-packets-limit.py
 
+  9、调整 build_assets/scripts/audio.mjs 路径参数
+    - runGenerate / runFetchSfx / runSyncDurations 中 hyperframesDir：必须通过
+      --videodir <dir> 参数传入（替换原 --hyperframes，不再默认 "."）
+    - DEFAULT_ENGINE：改为 /app/hyperframes/skills/media-use/audio/scripts/audio.mjs
+    脚本：python3 modify/patch-audio.py
+
