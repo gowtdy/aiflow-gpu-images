@@ -24,7 +24,7 @@ SKILLS_SCRIPT="${SCRIPT_DIR}/run_aiflow_build_skills.py"
 FRAME_PACKETS_SCRIPT="${SCRIPT_DIR}/frame-packets.mjs"
 ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 
-NAME="third-video"
+NAME="fourth-video"
 DATA_DIR="/app/videos"
 PROJECT_DIR="${DATA_DIR}/${NAME}"
 
