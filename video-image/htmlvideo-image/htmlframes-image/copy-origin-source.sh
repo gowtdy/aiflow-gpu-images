@@ -70,6 +70,9 @@ cp ${origin_source_path}/skills/faceless-explainer/scripts/transitions.mjs ${bui
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/transition-registry.mjs ${build_assets_path}/scripts/lib/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/transitions.json ${build_assets_path}/scripts/lib/
 cp ${origin_source_path}/skills/faceless-explainer/scripts/lib/pad-frame-duration.mjs ${build_assets_path}/scripts/lib/
+
+cp ${origin_source_path}/skills/faceless-explainer/scripts/audio.mjs ${build_assets_path}/scripts/
+
 cp ${origin_source_path}/bun.lock ${origin_source_path}/package.json ${origin_source_path}/CLAUDE.md ${origin_source_path}/AGENTS.md ${target_path}
 
 cp ${script_bak_path}/run_aiflow_video_pipeline.sh ${build_assets_path}/scripts/
@@ -93,3 +96,5 @@ echo "patch frame-packets container paths"
 python3 modify/patch-frame-packets.py
 echo "patch frame-packets maxPacketBytes"
 python3 modify/patch-frame-packets-limit.py
+echo "patch audio --videodir"
+python3 modify/patch-audio.py
