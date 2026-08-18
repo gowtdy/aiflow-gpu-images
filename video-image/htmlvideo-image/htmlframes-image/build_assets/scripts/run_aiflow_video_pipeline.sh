@@ -28,6 +28,9 @@ NAME="fourth-video"
 DATA_DIR="/app/videos"
 PROJECT_DIR="${DATA_DIR}/${NAME}"
 
+LANGUAGE="zh"
+VOICE="voice-lady-female"
+
 DRY_RUN=0
 for arg in "$@"; do
   if [[ "${arg}" == "--dry-run" ]]; then
@@ -44,7 +47,8 @@ python3 "${INIT_SCRIPT}" \
   --skip-skills \
   --topic "如何选择一支股票？" \
   --aspect 1920x1080 \
-  --language zh \
+  --language "${LANGUAGE}" \
+  --voice "${VOICE}" \
   --length 40s \
   --angle practitioner \
   --angle how-to \
