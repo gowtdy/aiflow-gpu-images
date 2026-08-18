@@ -1,4 +1,5 @@
-FROM gpu50-baseimage:0.1
+#FROM gpu50-baseimage:0.1
+FROM aiflowbase:0.4
 
 #ENV DEBIAN_FRONTEND=noninteractive
 
