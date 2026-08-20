@@ -14,10 +14,12 @@ COPY build_assets/ /app/
 RUN mkdir -p /app/index-tts/checkpoints /app/index-tts/models
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
-# 钉死 setuptools<82，避免 jieba 等 sdist 隔离构建拉到 84 与 torch 2.11 冲突
+# 钉死 setuptools<82：torch 2.11 需要；PIP_BUILD_CONSTRAINT 约束 unidic-lite 等 sdist 的隔离构建环境，
+# 否则会拉到 setuptools 84 触发依赖冲突
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV PIP_CONSTRAINT=/app/constraints.txt
+ENV PIP_BUILD_CONSTRAINT=/app/constraints.txt
 
 RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/ \
     && python3 -m pip install "setuptools>=70,<82" wheel -i https://mirrors.aliyun.com/pypi/simple/ \
