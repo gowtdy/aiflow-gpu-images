@@ -39,3 +39,23 @@ fasttext==0.9.3
 rotary-embedding-torch==0.8.9
 onnxruntime-gpu==1.21.1 
 Faster_Whisper==1.2.1
+
+# SQL & web
+sqlalchemy==2.0.40
+pymysql==1.1.1
+uvicorn==0.34.2
+fastapi  # add version if needed
+h11==0.14.0
+httpcore==1.0.8
+httpx==0.28.1
+
+# Safety & crypto
+cryptography==44.0.2
+
+# Task queue
+celery==5.5.1
+kombu==5.5.3
+amqp==5.1.1
+billiard==4.2.1
+vine==5.1.0
+setproctitle==1.3.5
