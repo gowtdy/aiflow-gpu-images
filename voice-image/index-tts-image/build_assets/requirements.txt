@@ -33,7 +33,7 @@ gradio==5.45.0
 deepspeed==0.17.1
 
 # online need
-fasttext==0.9.3
+fasttext-numpy2==0.10.4
 
 # clone时需要
 rotary-embedding-torch==0.8.9
