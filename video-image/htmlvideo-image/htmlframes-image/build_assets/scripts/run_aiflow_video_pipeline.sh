@@ -21,6 +21,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_SCRIPT="${SCRIPT_DIR}/init_with_brief.py"
 SKILLS_SCRIPT="${SCRIPT_DIR}/run_aiflow_build_skills.py"
+TTS_SCRIPT="${SCRIPT_DIR}/audio.mjs"
 FRAME_PACKETS_SCRIPT="${SCRIPT_DIR}/frame-packets.mjs"
 ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 
@@ -60,6 +61,9 @@ fi
 
 echo "aiflow skill storyboard → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill storyboard
+
+echo "tts generate"
+node "${TTS_SCRIPT}" --videodir "${PROJECT_DIR}" --voice "english|voice-lady-female"
 
 echo "aiflow skill visual → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill visual
