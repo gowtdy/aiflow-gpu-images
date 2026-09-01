@@ -1,4 +1,5 @@
-FROM gpu50-baseimage:0.1
+FROM gpu50-baseimage:0.2
+#FROM aiflowbase:0.4
 
 #ENV DEBIAN_FRONTEND=noninteractive
 
@@ -13,12 +14,16 @@ COPY build_assets/ /app/
 RUN mkdir -p /app/index-tts/checkpoints /app/index-tts/models
 
 # 安装 Python 依赖（root 安裝到系統路徑，不依賴 /home/aigc/.local）
-RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
-
+# 钉死 setuptools<82：torch 2.11 需要；PIP_BUILD_CONSTRAINT 约束 unidic-lite 等 sdist 的隔离构建环境，
+# 否则会拉到 setuptools 84 触发依赖冲突
 WORKDIR /app
-
 ENV PYTHONUNBUFFERED=1
-RUN pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+ENV PIP_CONSTRAINT=/app/constraints.txt
+ENV PIP_BUILD_CONSTRAINT=/app/constraints.txt
+
+RUN python3 -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/ \
+    && python3 -m pip install "setuptools>=70,<82" wheel -i https://mirrors.aliyun.com/pypi/simple/ \
+    && pip install --progress-bar=raw -v -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 给脚本执行权限
 RUN chmod +x /app/start_index-tts.sh

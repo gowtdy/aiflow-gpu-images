@@ -1,0 +1,2 @@
+# torch 2.11 requires setuptools<82 (pkg_resources removed in 82+)
+setuptools>=70,<82
