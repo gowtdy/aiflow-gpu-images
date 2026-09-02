@@ -20,7 +20,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TARGET = PROJECT_ROOT / "build_assets" / "scripts" / "audio.mjs"
 
-ENGINE_PATH = "/app/hyperframes/skills/media-use/audio/scripts/audio.mjs"
+ENGINE_PATH = "/app/hyperframes/skills/media-use/audio/scripts/audio_aiflow.mjs"
 MARK = "gowtd-mod: audio paths"
 
 # Upstream: flag(argv, "hyperframes", ".") — three indented call sites.
