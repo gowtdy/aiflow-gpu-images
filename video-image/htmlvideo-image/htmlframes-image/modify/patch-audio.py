@@ -5,7 +5,7 @@ Patch build_assets/scripts/audio.mjs for container layout:
   1. Require --videodir <dir> (no default ".") in runGenerate / runFetchSfx /
      runSyncDurations. Assigns to hyperframesDir (replaces --hyperframes).
   2. Point DEFAULT_ENGINE at container media-use path
-     /app/hyperframes/skills/media-use/audio/scripts/audio.mjs
+     /app/hyperframes/skills/media-use/audio/scripts/audio_aiflow.mjs
 
 Usage:
   python3 modify/patch-audio.py [AUDIO_MJS]
