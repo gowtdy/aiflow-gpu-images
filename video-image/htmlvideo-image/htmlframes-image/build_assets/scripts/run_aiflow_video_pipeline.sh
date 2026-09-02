@@ -28,6 +28,8 @@ ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 NAME="fourth-video"
 DATA_DIR="/app/videos"
 PROJECT_DIR="${DATA_DIR}/${NAME}"
+LANGUAGE="zh"
+VOICE="english|voice-lady-female"
 
 DRY_RUN=0
 for arg in "$@"; do
@@ -45,7 +47,8 @@ python3 "${INIT_SCRIPT}" \
   --skip-skills \
   --topic "如何选择一支股票？" \
   --aspect 1920x1080 \
-  --language zh \
+  --language ${LANGUAGE} \
+  --voice ${VOICE} \
   --length 40s \
   --angle practitioner \
   --angle how-to \
@@ -63,7 +66,7 @@ echo "aiflow skill storyboard → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill storyboard
 
 echo "tts generate"
-node "${TTS_SCRIPT}" --videodir "${PROJECT_DIR}" --voice "english|voice-lady-female"
+node "${TTS_SCRIPT}" --videodir "${PROJECT_DIR}" --voice "${VOICE}"
 
 echo "aiflow skill visual → ${PROJECT_DIR}"
 python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill visual
