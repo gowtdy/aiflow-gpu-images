@@ -14,7 +14,8 @@ ENV HTTP_PROXY=${HTTP_PROXY} \
     no_proxy=${NO_PROXY}
 
 # Debian → Aliyun (same idea as Dockerfile.runtime Ubuntu mirrors).
-RUN set -eux; \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    set -eux; \
     for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do \
       [ -f "$f" ] || continue; \
       sed -i \
@@ -30,11 +31,16 @@ RUN set -eux; \
 
 # Bun binary from npmmirror (not GitHub Releases via bun.sh/install).
 # URL shape: ${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip
+# Cache mount: bun zip is large (~48MB); cache avoids re-download across builds.
 ARG BUN_VERSION=1.3.14
 ARG BUN_BINARY_MIRROR=https://registry.npmmirror.com/-/binary/bun
-RUN set -eux; \
-    curl -fsSL "${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip" -o /tmp/bun.zip; \
-    unzip -q /tmp/bun.zip -d /tmp/bun-extract; \
+RUN --mount=type=cache,target=/tmp/bun-cache,sharing=locked \
+    set -eux; \
+    bun_zip="/tmp/bun-cache/bun-linux-x64-${BUN_VERSION}.zip"; \
+    if [ ! -f "$bun_zip" ]; then \
+      curl -fsSL "${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip" -o "$bun_zip"; \
+    fi; \
+    unzip -q "$bun_zip" -d /tmp/bun-extract; \
     install -m 755 /tmp/bun-extract/bun-linux-x64/bun /usr/local/bin/bun; \
-    rm -rf /tmp/bun.zip /tmp/bun-extract; \
+    rm -rf /tmp/bun-extract; \
     bun --version
