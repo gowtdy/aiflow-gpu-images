@@ -1,6 +1,10 @@
 # Compile HyperFrames CLI from local build_assets/hyperframes.
 # Requires pre-built base: ./build-htmlframes-base-image.sh
 # Build: ./build-htmlframes-builder-image.sh
+#
+# Caching strategy: sources are tiered by change frequency so editing cli or
+# studio does not invalidate the foundation build (12 other packages).
+# Tier 1 (Foundation) → Tier 2 (Studio) → Tier 3 (CLI, most volatile).
 ARG BUILDER_BASE_IMAGE=htmlframes-builder-base:0.1
 FROM ${BUILDER_BASE_IMAGE}
 
@@ -55,17 +59,38 @@ RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-s
 " \
   && echo "==> [1/6] package.json patched"
 
-# BuildKit cache for bun download store; heartbeat script (no --verbose by default).
-RUN --mount=type=cache,target=/root/.bun/install/cache \
+# BuildKit cache for entire bun store (download cache + global package store).
+# Caching /root/.bun (not just install/cache) allows the linking phase to reuse
+# hardlinked packages from the global store across builds.
+RUN --mount=type=cache,target=/root/.bun \
   chmod +x /tmp/bun-install-with-progress.sh \
   && /tmp/bun-install-with-progress.sh \
   && echo "==> [2/6] bun install done"
 
-# --- Layer 2: full sources (invalidates compile only) ---
-COPY build_assets/hyperframes /app/hyperframes
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tier 1 — Foundation: all packages except studio + cli (12 packages)
+# These rarely change; the costly producer build lives here.
+# ═══════════════════════════════════════════════════════════════════════════════
+COPY build_assets/hyperframes/packages/parsers          /app/hyperframes/packages/parsers
+COPY build_assets/hyperframes/packages/lint             /app/hyperframes/packages/lint
+COPY build_assets/hyperframes/packages/studio-server    /app/hyperframes/packages/studio-server
+COPY build_assets/hyperframes/packages/core             /app/hyperframes/packages/core
+COPY build_assets/hyperframes/packages/engine           /app/hyperframes/packages/engine
+COPY build_assets/hyperframes/packages/producer         /app/hyperframes/packages/producer
+COPY build_assets/hyperframes/packages/player           /app/hyperframes/packages/player
+COPY build_assets/hyperframes/packages/sdk              /app/hyperframes/packages/sdk
+COPY build_assets/hyperframes/packages/shader-transitions /app/hyperframes/packages/shader-transitions
+COPY build_assets/hyperframes/packages/aws-lambda       /app/hyperframes/packages/aws-lambda
+COPY build_assets/hyperframes/packages/gcp-cloud-run    /app/hyperframes/packages/gcp-cloud-run
+COPY build_assets/hyperframes/packages/sdk-playground   /app/hyperframes/packages/sdk-playground
 
-# Full COPY overwrites the patched aws-lambda package.json — re-apply.
-RUN echo "==> [1/6] re-patch aws-lambda package.json after source COPY" \
+# Root-level assets needed by cli build:copy (registry examples + skills).
+# .dockerignore already limits these to warm-grain + 3 skill dirs.
+COPY build_assets/hyperframes/registry /app/hyperframes/registry
+COPY build_assets/hyperframes/skills   /app/hyperframes/skills
+
+# Tier 1 COPY overwrites the patched aws-lambda package.json — re-apply.
+RUN echo "==> [T1] re-patch aws-lambda package.json after foundation COPY" \
   && node -e "\
   const fs = require('fs'); \
   const p = 'packages/aws-lambda/package.json'; \
@@ -74,34 +99,51 @@ RUN echo "==> [1/6] re-patch aws-lambda package.json after source COPY" \
   delete pkg.dependencies['ffprobe-static']; \
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n'); \
 " \
-  && echo "==> [1/6] package.json re-patched"
+  && echo "==> [T1] package.json re-patched"
 
-RUN echo "==> [3/6] build parsers / lint / studio-server" \
+RUN echo "==> [T1] build parsers / lint / studio-server" \
   && bun run --filter '@hyperframes/{parsers,lint,studio-server}' build \
-  && echo "==> [3/6] done"
+  && echo "==> [T1] parsers / lint / studio-server done"
 
-RUN echo "==> [4/6] build core" \
+RUN echo "==> [T1] build core" \
   && bun run --filter @hyperframes/core build \
-  && echo "==> [4/6] done"
+  && echo "==> [T1] core done"
 
-# Sequential (not one parallel filter): BuildKit error summaries clip at the
-# tail — a noisy studio success can hide the real failing package. Sequential
-# also lowers peak RAM (studio DTS + producer fonts in parallel often OOM).
-RUN echo "==> [5/6] build engine" \
+# Sequential — BuildKit error summaries clip at the tail; sequential also
+# lowers peak RAM (producer fonts + other builds in parallel often OOM).
+RUN echo "==> [T1] build engine" \
   && bun run --filter @hyperframes/engine build \
-  && echo "==> [5/6] build producer" \
-  && bun run --filter @hyperframes/producer build \
-  && echo "==> [5/6] build player" \
-  && bun run --filter @hyperframes/player build \
-  && echo "==> [5/6] build sdk" \
-  && bun run --filter @hyperframes/sdk build \
-  && echo "==> [5/6] build studio" \
-  && bun run --filter @hyperframes/studio build \
-  && echo "==> [5/6] done"
+  && echo "==> [T1] engine done"
 
-RUN echo "==> [6/6] build cli" \
+RUN echo "==> [T1] build producer" \
+  && bun run --filter @hyperframes/producer build \
+  && echo "==> [T1] producer done"
+
+RUN echo "==> [T1] build player" \
+  && bun run --filter @hyperframes/player build \
+  && echo "==> [T1] player done"
+
+RUN echo "==> [T1] build sdk" \
+  && bun run --filter @hyperframes/sdk build \
+  && echo "==> [T1] sdk done"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tier 2 — Studio (cached when only cli changes)
+# ═══════════════════════════════════════════════════════════════════════════════
+COPY build_assets/hyperframes/packages/studio /app/hyperframes/packages/studio
+
+RUN echo "==> [T2] build studio" \
+  && bun run --filter @hyperframes/studio build \
+  && echo "==> [T2] studio done"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tier 3 — CLI (most frequently changed; cached when nothing changed)
+# ═══════════════════════════════════════════════════════════════════════════════
+COPY build_assets/hyperframes/packages/cli /app/hyperframes/packages/cli
+
+RUN echo "==> [T3] build cli" \
   && bun run --filter @hyperframes/cli build \
-  && echo "==> [6/6] cli build done"
+  && echo "==> [T3] cli done"
 
 # Export onnxruntime-node to a fixed path (Bun node_modules layout differs from npm).
 WORKDIR /app/hyperframes/packages/cli
