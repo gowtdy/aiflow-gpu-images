@@ -1,11 +1,20 @@
-# Compile HyperFrames CLI from local build_assets/hyperframes (no gpu50-baseimage required).
-FROM node:24-bookworm
-RUN apt-get update && apt-get install -y curl unzip \
-    && curl -fsSL https://bun.sh/install | bash \
-    && ln -sf /root/.bun/bin/bun /usr/local/bin/bun \
-    && rm -rf /var/lib/apt/lists/*
-COPY build_assets/hyperframes /app/hyperframes
-COPY build_assets/scripts/bun-install-with-progress.sh /tmp/bun-install-with-progress.sh
+# Compile HyperFrames CLI from local build_assets/hyperframes.
+# Requires pre-built base: ./build-htmlframes-base-image.sh
+# Build: ./build-htmlframes-builder-image.sh
+ARG BUILDER_BASE_IMAGE=htmlframes-builder-base:0.1
+FROM ${BUILDER_BASE_IMAGE}
+
+# Optional HTTP proxy (empty = unused). Prefer setting on base; re-declare for this stage.
+ARG HTTP_PROXY=
+ARG HTTPS_PROXY=
+ARG NO_PROXY=localhost,127.0.0.1,registry.npmmirror.com,mirrors.aliyun.com,cdn.npmmirror.com
+ENV HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY} \
+    http_proxy=${HTTP_PROXY} \
+    https_proxy=${HTTPS_PROXY} \
+    NO_PROXY=${NO_PROXY} \
+    no_proxy=${NO_PROXY}
+
 WORKDIR /app/hyperframes
 
 # Default: npmmirror (China). Override:
@@ -16,11 +25,25 @@ ARG BUN_INSTALL_VERBOSE=0
 ENV BUN_CONFIG_REGISTRY=${BUN_REGISTRY}
 ENV BUN_INSTALL_VERBOSE=${BUN_INSTALL_VERBOSE}
 
-# Local image only builds CLI (+ compile deps). Strip aws-lambda binary
-# packages so bun install does not hit GitHub CDN (ffmpeg-static timeout).
-# Skip aws-lambda / gcp-cloud-run / shader-transitions — CLI marks the first
-# two external; shader-transitions is not required for the CLI bundle.
-# Split into layers + echo so docker build --progress=plain shows which step is running.
+# --- Layer 1: lock + package manifests only (source edits must not bust install) ---
+COPY build_assets/hyperframes/package.json build_assets/hyperframes/bun.lock ./
+COPY build_assets/hyperframes/packages/aws-lambda/package.json ./packages/aws-lambda/
+COPY build_assets/hyperframes/packages/cli/package.json ./packages/cli/
+COPY build_assets/hyperframes/packages/core/package.json ./packages/core/
+COPY build_assets/hyperframes/packages/engine/package.json ./packages/engine/
+COPY build_assets/hyperframes/packages/gcp-cloud-run/package.json ./packages/gcp-cloud-run/
+COPY build_assets/hyperframes/packages/lint/package.json ./packages/lint/
+COPY build_assets/hyperframes/packages/parsers/package.json ./packages/parsers/
+COPY build_assets/hyperframes/packages/player/package.json ./packages/player/
+COPY build_assets/hyperframes/packages/producer/package.json ./packages/producer/
+COPY build_assets/hyperframes/packages/sdk/package.json ./packages/sdk/
+COPY build_assets/hyperframes/packages/sdk-playground/package.json ./packages/sdk-playground/
+COPY build_assets/hyperframes/packages/shader-transitions/package.json ./packages/shader-transitions/
+COPY build_assets/hyperframes/packages/studio/package.json ./packages/studio/
+COPY build_assets/hyperframes/packages/studio-server/package.json ./packages/studio-server/
+COPY build_assets/scripts/bun-install-with-progress.sh /tmp/bun-install-with-progress.sh
+
+# Strip aws-lambda binary packages so bun install does not hit GitHub CDN (ffmpeg-static timeout).
 RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-static)" \
   && node -e "\
   const fs = require('fs'); \
@@ -32,12 +55,26 @@ RUN echo "==> [1/6] patch aws-lambda package.json (strip ffmpeg-static/ffprobe-s
 " \
   && echo "==> [1/6] package.json patched"
 
-# No --verbose by default (BuildKit clips at ~200KiB/s). Heartbeat every 15s:
-# package new/recent + proc CPU/IO deltas + children + touched paths + log tail.
-# Debug HTTP: --build-arg BUN_INSTALL_VERBOSE=1
-RUN chmod +x /tmp/bun-install-with-progress.sh \
+# BuildKit cache for bun download store; heartbeat script (no --verbose by default).
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+  chmod +x /tmp/bun-install-with-progress.sh \
   && /tmp/bun-install-with-progress.sh \
   && echo "==> [2/6] bun install done"
+
+# --- Layer 2: full sources (invalidates compile only) ---
+COPY build_assets/hyperframes /app/hyperframes
+
+# Full COPY overwrites the patched aws-lambda package.json — re-apply.
+RUN echo "==> [1/6] re-patch aws-lambda package.json after source COPY" \
+  && node -e "\
+  const fs = require('fs'); \
+  const p = 'packages/aws-lambda/package.json'; \
+  const pkg = JSON.parse(fs.readFileSync(p, 'utf8')); \
+  delete pkg.dependencies['ffmpeg-static']; \
+  delete pkg.dependencies['ffprobe-static']; \
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n'); \
+" \
+  && echo "==> [1/6] package.json re-patched"
 
 RUN echo "==> [3/6] build parsers / lint / studio-server" \
   && bun run --filter '@hyperframes/{parsers,lint,studio-server}' build \
@@ -66,7 +103,7 @@ RUN echo "==> [6/6] build cli" \
   && bun run --filter @hyperframes/cli build \
   && echo "==> [6/6] cli build done"
 
-# 导出 onnxruntime-node 到固定路径（Bun 的 node_modules 布局与 npm 不同，runtime 阶段从此处拷贝）
+# Export onnxruntime-node to a fixed path (Bun node_modules layout differs from npm).
 WORKDIR /app/hyperframes/packages/cli
 RUN echo "==> export onnxruntime-node to /opt/hf-export" \
   && node -e "\
