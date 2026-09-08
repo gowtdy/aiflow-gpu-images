@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --experimental-strip-types
 // audio.mjs — the shared HyperFrames audio engine. ONE implementation of TTS +
 // BGM + SFX for every video workflow (product-launch, general-video, pr-to-video,
 // …). Workflows do NOT vendor a copy: they write a neutral `audio_request.json`
@@ -50,7 +50,7 @@ import {
   synthesizeOne,
   transcribeWav,
   withWordIds,
-} from "./lib/tts.mjs";
+} from "./lib/tts_aiflow.mjs";
 import { generateBgmDetached, inferBgmPrompt, retrieveBgm } from "./lib/bgm.mjs";
 import { resolveSfx } from "./lib/sfx.mjs";
 import { mapWithConcurrency } from "./lib/concurrency.mjs";
@@ -76,14 +76,16 @@ const r3 = (x) => Number(x.toFixed(3));
 // model per subprocess, so firing every line at once multiplies that cost by
 // the line count. mapWithConcurrency caps how many run at once — still
 // parallel, just bounded.
-const ttsConcurrency = Math.max(1, Number(process.env.HYPERFRAMES_TTS_CONCURRENCY) || 1);
+const ttsConcurrency = Math.max(1, Number(process.env.HYPERFRAMES_TTS_CONCURRENCY) || 4);
 
 const hyperframesDir = resolve(flag("hyperframes", "."));
 const requestPath = resolve(flag("request", join(hyperframesDir, "audio_request.json")));
 const outPath = resolve(flag("out", join(hyperframesDir, "audio_meta.json")));
 const sfxLibDir = resolve(flag("sfx-lib", join(HERE, "..", "assets", "sfx")));
 const lyriaRecipe = resolve(flag("lyria-recipe", join(HERE, "lyria-recipe.py")));
-const onlyArg = flag("only", "tts,bgm,sfx");
+// const onlyArg = flag("only", "tts,bgm,sfx");
+// 先解决tts问题，后续再解决bgm和sfx问题
+const onlyArg = flag("only", "tts");
 const only = new Set(
   onlyArg
     .split(",")
@@ -124,9 +126,7 @@ let ttsProvider = prev.tts_provider ?? null;
 let voiceId = prev.voice_id ?? null;
 if (only.has("tts") && lines.length) {
   try {
-    ttsProvider = pickProvider(
-      providerOverride || (request.provider === "auto" ? null : request.provider),
-    );
+    ttsProvider = "caluma";
   } catch (e) {
     die(e.message);
   }
@@ -143,7 +143,7 @@ if (only.has("tts") && lines.length) {
       anomalies.push(`line ${id}: empty text — skipped`);
       return null;
     }
-    const rel = `assets/voice/${id}.wav`;
+    const rel = `assets/voice/${id}.mp3`;
     const abs = join(hyperframesDir, rel);
     const { ok, words, error } = await synthesizeOne({
       provider: ttsProvider,
