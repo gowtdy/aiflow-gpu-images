@@ -1,50 +1,49 @@
 #!/usr/bin/env bash
-# Build hyperframes-local image (FROM gpu50-baseimage:0.1). Run 時由 base entrypoint 依 AIGC_UID/AIGC_GID 建立 aigc，B 機可傳 -e AIGC_UID=$(id -u aigc) -e AIGC_GID=$(id -g aigc)，未傳則預設 1001。
+# Build htmlframes builder-base image only (Node 24 + bun, China-friendly mirrors).
 #
 # Usage:
-#   ./build-hyperframes-image.sh           # build builder + runtime (default)
-#   ./build-hyperframes-image.sh builder   # compile HyperFrames CLI only
-#   ./build-hyperframes-image.sh runtime   # runtime image only (builder must exist)
+#   ./build-htmlframes-base-image.sh
 #
-# Override image tags:
-#   BUILDER_IMAGE=my-registry/hyperframes-builder:0.1 RUNTIME_IMAGE=hyperframes-local-image:0.1 ./build-hyperframes-image.sh
-# Bun registry (default npmmirror) / optional verbose install:
-#   BUN_REGISTRY=https://registry.npmjs.org ./build-htmlframes-image.sh builder
-#   BUN_INSTALL_VERBOSE=1 ./build-htmlframes-image.sh builder
+# Then:
+#   ./build-htmlframes-builder-image.sh
+#   ./build-htmlframes-runtime-image.sh
+#
+# Override:
+#   BUILDER_BASE_IMAGE=my-registry/htmlframes-builder-base:0.1 ./build-htmlframes-base-image.sh
+#   BUN_VERSION=1.3.14 BUN_BINARY_MIRROR=https://registry.npmmirror.com/-/binary/bun ./build-htmlframes-base-image.sh
+# Optional proxy (from .env or env):
+#   HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890 ./build-htmlframes-base-image.sh
 set -euo pipefail
 
-BUILDER_IMAGE="${BUILDER_IMAGE:-htmlframes-builder:0.1}"
-RUNTIME_IMAGE="${RUNTIME_IMAGE:-htmlframes-image:0.1}"
-BUN_REGISTRY="${BUN_REGISTRY:-https://registry.npmmirror.com}"
-BUN_INSTALL_VERBOSE="${BUN_INSTALL_VERBOSE:-0}"
-TARGET="${1:-all}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
 
-build_builder() {
-  docker build --progress=plain -t "${BUILDER_IMAGE}" \
-    --build-arg "BUN_REGISTRY=${BUN_REGISTRY}" \
-    --build-arg "BUN_INSTALL_VERBOSE=${BUN_INSTALL_VERBOSE}" \
-    -f Dockerfile.builder .
-}
+if [[ -f .env ]]; then
+  # shellcheck disable=SC1091
+  source .env
+fi
 
-build_runtime() {
-  docker build --progress=plain -t "${RUNTIME_IMAGE}" \
-    --build-arg BUILDER_IMAGE="${BUILDER_IMAGE}" \
-    -f Dockerfile.runtime .
-}
+export DOCKER_BUILDKIT=1
 
-case "${TARGET}" in
-  builder)
-    build_builder
-    ;;
-  runtime)
-    build_runtime
-    ;;
-  all|"")
-    build_builder
-    build_runtime
-    ;;
-  *)
-    echo "Unknown target: ${TARGET} (use: builder | runtime | all)" >&2
-    exit 1
-    ;;
-esac
+BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-htmlframes-builder-base:0.1}"
+BUN_VERSION="${BUN_VERSION:-1.3.14}"
+BUN_BINARY_MIRROR="${BUN_BINARY_MIRROR:-https://registry.npmmirror.com/-/binary/bun}"
+NO_PROXY_DEFAULT="localhost,127.0.0.1,registry.npmmirror.com,mirrors.aliyun.com,cdn.npmmirror.com"
+NO_PROXY="${NO_PROXY:-${NO_PROXY_DEFAULT}}"
+
+build_args=(
+  --build-arg "BUN_VERSION=${BUN_VERSION}"
+  --build-arg "BUN_BINARY_MIRROR=${BUN_BINARY_MIRROR}"
+  --build-arg "NO_PROXY=${NO_PROXY}"
+)
+# Only pass proxy when set — avoid baking empty proxy into the image layer hash.
+if [[ -n "${HTTP_PROXY:-}" ]]; then
+  build_args+=(--build-arg "HTTP_PROXY=${HTTP_PROXY}")
+fi
+if [[ -n "${HTTPS_PROXY:-}" ]]; then
+  build_args+=(--build-arg "HTTPS_PROXY=${HTTPS_PROXY}")
+fi
+
+docker build --progress=plain -t "${BUILDER_BASE_IMAGE}" \
+  "${build_args[@]}" \
+  -f Dockerfile.builder-base .
