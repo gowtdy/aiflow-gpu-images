@@ -83,7 +83,8 @@ function runEngine({ request, hyperframesDir, neutral, only, extra = [] }, die) 
     only,
     ...extra,
   ];
-  const r = spawnSync("node", args, { stdio: "inherit" });
+  // --experimental-strip-types: engine imports util/signatureUtil.ts via caluma.mjs
+  const r = spawnSync("node", ["--experimental-strip-types", ...args], { stdio: "inherit" });
   if (r.status !== 0) die(`media audio engine exited ${r.status}`);
 }
 
