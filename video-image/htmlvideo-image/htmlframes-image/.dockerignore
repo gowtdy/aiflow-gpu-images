@@ -1,0 +1,18 @@
+# Shared ignore for runtime (and default docker build context).
+# Keep build_assets/hyperframes/skills and registry — runtime COPY build_assets/ needs them.
+
+bak/
+example/
+modify/
+.git/
+.DS_Store
+**/.DS_Store
+**/node_modules/
+**/.bun/
+**/.turbo/
+**/coverage/
+.env
+.env.*
+!.env.example
+*.mp4
+*.log
