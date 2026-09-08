@@ -1,0 +1,40 @@
+# htmlframes builder base: Node 24 + bun (China-friendly apt + bun binary mirrors).
+# Build: ./build-htmlframes-base-image.sh
+FROM node:24-bookworm
+
+# Optional HTTP proxy (empty = unused). Set via --build-arg from .env.
+ARG HTTP_PROXY=
+ARG HTTPS_PROXY=
+ARG NO_PROXY=localhost,127.0.0.1,registry.npmmirror.com,mirrors.aliyun.com,cdn.npmmirror.com
+ENV HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY} \
+    http_proxy=${HTTP_PROXY} \
+    https_proxy=${HTTPS_PROXY} \
+    NO_PROXY=${NO_PROXY} \
+    no_proxy=${NO_PROXY}
+
+# Debian → Aliyun (same idea as Dockerfile.runtime Ubuntu mirrors).
+RUN set -eux; \
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do \
+      [ -f "$f" ] || continue; \
+      sed -i \
+        -e 's|http://deb.debian.org/debian|https://mirrors.aliyun.com/debian|g' \
+        -e 's|https://deb.debian.org/debian|https://mirrors.aliyun.com/debian|g' \
+        -e 's|http://security.debian.org/debian-security|https://mirrors.aliyun.com/debian-security|g' \
+        -e 's|https://security.debian.org/debian-security|https://mirrors.aliyun.com/debian-security|g' \
+        "$f"; \
+    done; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl unzip ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
+
+# Bun binary from npmmirror (not GitHub Releases via bun.sh/install).
+# URL shape: ${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip
+ARG BUN_VERSION=1.3.14
+ARG BUN_BINARY_MIRROR=https://registry.npmmirror.com/-/binary/bun
+RUN set -eux; \
+    curl -fsSL "${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip" -o /tmp/bun.zip; \
+    unzip -q /tmp/bun.zip -d /tmp/bun-extract; \
+    install -m 755 /tmp/bun-extract/bun-linux-x64/bun /usr/local/bin/bun; \
+    rm -rf /tmp/bun.zip /tmp/bun-extract; \
+    bun --version
