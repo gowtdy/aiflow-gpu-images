@@ -10,7 +10,7 @@
 #
 # Override:
 #   BUILDER_BASE_IMAGE=my-registry/htmlframes-builder-base:0.1 ./build-htmlframes-base-image.sh
-#   BUN_VERSION=1.3.14 BUN_BINARY_MIRROR=https://registry.npmmirror.com/-/binary/bun ./build-htmlframes-base-image.sh
+#   BUN_VERSION=1.3.14 ./build-htmlframes-base-image.sh
 # Optional proxy (from .env or env):
 #   HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890 ./build-htmlframes-base-image.sh
 set -euo pipefail
@@ -27,13 +27,11 @@ export DOCKER_BUILDKIT=1
 
 BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-htmlframes-builder-base:0.1}"
 BUN_VERSION="${BUN_VERSION:-1.3.14}"
-BUN_BINARY_MIRROR="${BUN_BINARY_MIRROR:-https://registry.npmmirror.com/-/binary/bun}"
 NO_PROXY_DEFAULT="localhost,127.0.0.1,registry.npmmirror.com,mirrors.aliyun.com,cdn.npmmirror.com"
 NO_PROXY="${NO_PROXY:-${NO_PROXY_DEFAULT}}"
 
 build_args=(
   --build-arg "BUN_VERSION=${BUN_VERSION}"
-  --build-arg "BUN_BINARY_MIRROR=${BUN_BINARY_MIRROR}"
   --build-arg "NO_PROXY=${NO_PROXY}"
 )
 # Only pass proxy when set — avoid baking empty proxy into the image layer hash.
