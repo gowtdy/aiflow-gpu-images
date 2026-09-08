@@ -19,7 +19,9 @@ COPY build_assets/ /app/
 ARG NODE_VERSION=24.18.0
 ARG CHROME_HEADLESS_SHELL_VERSION=148.0.7778.167
 # Ubuntu 官方源偶发 Mirror sync / Packages.gz size mismatch；换阿里云 + 重试
-RUN set -eux; \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    set -eux; \
     for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do \
       [ -f "$f" ] || continue; \
       sed -i \
@@ -29,8 +31,9 @@ RUN set -eux; \
         -e 's|https://security.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' \
         "$f"; \
     done; \
+    sed -i 's/^Components:.*/Components: main/' /etc/apt/sources.list.d/ubuntu.sources; \
     echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries; \
-    apt-get update || (sleep 20 && rm -rf /var/lib/apt/lists/* && apt-get update); \
+    apt-get update || (sleep 20 && apt-get update); \
     apt-get install -y --no-install-recommends \
     ca-certificates xz-utils unzip \
     libgbm1 libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 \
@@ -38,23 +41,24 @@ RUN set -eux; \
     libxshmfence1 libgtk-3-0 \
     && tar -xJf "/app/software/node-v${NODE_VERSION}-linux-x64.tar.xz" \
          -C /usr/local --strip-components=1 \
-    && rm -rf /var/lib/apt/lists/* \
     && node --version && npm --version
 
 # 字体包（离线安装，避免在线下载 175 MB 字体包卡住构建）
 # .deb 文件由 download-font-packages.sh 预下载到 build_assets/software/fonts/
-RUN set -eux; \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    set -eux; \
     if [ -d /app/software/fonts ] && [ -n "$(ls -A /app/software/fonts/*.deb 2>/dev/null)" ]; then \
       dpkg -i /app/software/fonts/*.deb; \
       rm -rf /app/software/fonts; \
     else \
       echo "WARNING: no font .deb files found, falling back to apt"; \
+      sed -i 's/^Components:.*/Components: main universe/' /etc/apt/sources.list.d/ubuntu.sources; \
       apt-get update; \
       apt-get install -y --no-install-recommends \
         fonts-liberation fonts-noto-color-emoji fonts-noto-cjk fonts-noto-core \
         fonts-noto-extra fonts-noto-ui-core fonts-freefont-ttf fonts-dejavu-core \
         fontconfig; \
-      rm -rf /var/lib/apt/lists/*; \
     fi; \
     fc-cache -fv
 
