@@ -12,9 +12,9 @@ if [[ "${BUN_INSTALL_VERBOSE:-0}" == "1" ]]; then
   VERBOSE_FLAG=(--verbose)
 fi
 
-INTERVAL_SECS="${BUN_INSTALL_HEARTBEAT_SECS:-5}"
+INTERVAL_SECS="${BUN_INSTALL_HEARTBEAT_SECS:-15}"
 
-echo "==> [2/6] bun install starting..."
+echo "==> [2/6] bun install --frozen-lockfile starting..."
 echo "    registry: ${REGISTRY}"
 echo "    verbose: ${BUN_INSTALL_VERBOSE:-0} (set BUN_INSTALL_VERBOSE=1 to debug)"
 echo "    heartbeat every ${INTERVAL_SECS}s (fast line first; details after)"
@@ -24,7 +24,7 @@ LOG=/tmp/bun-install.log
 PREV_PKGS_FILE=/tmp/bun-install-prev-pkgs.txt
 : >"$PREV_PKGS_FILE"
 
-stdbuf -oL -eL bun install "${VERBOSE_FLAG[@]}" --registry="${REGISTRY}" >"$LOG" 2>&1 &
+stdbuf -oL -eL bun install --frozen-lockfile "${VERBOSE_FLAG[@]}" --registry="${REGISTRY}" >"$LOG" 2>&1 &
 bun_pid=$!
 
 stdbuf -oL -eL tail -n +1 -F "$LOG" &
@@ -184,7 +184,7 @@ heartbeat() {
     log_tail_summary
 
     # --- SLOWER details every other tick (avoid blocking the next beat) ---
-    if (( tick % 2 == 0 )); then
+    if (( tick % 3 == 0 )); then
       local now_file new_list recent_list new_count touched
       now_file=/tmp/bun-install-now-pkgs.txt
       list_bun_pkg_dirs >"$now_file" 2>/dev/null
