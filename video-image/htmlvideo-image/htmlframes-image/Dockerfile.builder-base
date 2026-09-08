@@ -29,18 +29,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends curl unzip ca-certificates; \
     rm -rf /var/lib/apt/lists/*
 
-# Bun binary from npmmirror (not GitHub Releases via bun.sh/install).
-# URL shape: ${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip
-# Cache mount: bun zip is large (~48MB); cache avoids re-download across builds.
+# Bun binary from offline zip (pre-downloaded to build_assets/software/).
 ARG BUN_VERSION=1.3.14
-ARG BUN_BINARY_MIRROR=https://registry.npmmirror.com/-/binary/bun
-RUN --mount=type=cache,target=/tmp/bun-cache,sharing=locked \
-    set -eux; \
-    bun_zip="/tmp/bun-cache/bun-linux-x64-${BUN_VERSION}.zip"; \
-    if [ ! -f "$bun_zip" ]; then \
-      curl -fsSL "${BUN_BINARY_MIRROR}/bun-v${BUN_VERSION}/bun-linux-x64.zip" -o "$bun_zip"; \
-    fi; \
-    unzip -q "$bun_zip" -d /tmp/bun-extract; \
+COPY build_assets/software/bun-linux-x64.zip /tmp/bun-linux-x64.zip
+RUN set -eux; \
+    unzip -q /tmp/bun-linux-x64.zip -d /tmp/bun-extract; \
     install -m 755 /tmp/bun-extract/bun-linux-x64/bun /usr/local/bin/bun; \
-    rm -rf /tmp/bun-extract; \
+    rm -rf /tmp/bun-extract /tmp/bun-linux-x64.zip; \
     bun --version
