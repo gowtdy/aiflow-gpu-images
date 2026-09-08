@@ -1,6 +1,6 @@
 # htmlframes builder base: Node 24 + bun (China-friendly apt + bun binary mirrors).
 # Build: ./build-htmlframes-base-image.sh
-FROM node:24-bookworm
+FROM docker.m.daocloud.io/library/node:24-bookworm
 
 # Optional HTTP proxy (empty = unused). Set via --build-arg from .env.
 ARG HTTP_PROXY=
