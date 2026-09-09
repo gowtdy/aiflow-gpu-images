@@ -14,7 +14,7 @@ fi
 
 INTERVAL_SECS="${BUN_INSTALL_HEARTBEAT_SECS:-15}"
 
-echo "==> [2/6] bun install --frozen-lockfile starting..."
+echo "==> [2/6] bun install --no-optional starting..."
 echo "    registry: ${REGISTRY}"
 echo "    verbose: ${BUN_INSTALL_VERBOSE:-0} (set BUN_INSTALL_VERBOSE=1 to debug)"
 echo "    heartbeat every ${INTERVAL_SECS}s (fast line first; details after)"
@@ -24,10 +24,10 @@ LOG=/tmp/bun-install.log
 PREV_PKGS_FILE=/tmp/bun-install-prev-pkgs.txt
 : >"$PREV_PKGS_FILE"
 
-stdbuf -oL -eL bun install --frozen-lockfile "${VERBOSE_FLAG[@]}" --registry="${REGISTRY}" >"$LOG" 2>&1 &
+bun install --no-optional "${VERBOSE_FLAG[@]}" --registry="${REGISTRY}" >"$LOG" 2>&1 &
 bun_pid=$!
 
-stdbuf -oL -eL tail -n +1 -F "$LOG" &
+tail -n +1 -F "$LOG" &
 tail_pid=$!
 
 # Announce the quiet post-resolve phase as soon as bun logs it.
