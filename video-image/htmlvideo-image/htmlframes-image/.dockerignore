@@ -24,7 +24,7 @@ build_assets/hyperframes/packages/producer/tests/
 build_assets/hyperframes/registry/blocks/
 build_assets/hyperframes/registry/components/
 
-# Skills: build-copy only bundles hyperframes / hyperframes-cli / gsap (existsSync-guarded).
+# Skills: build-copy bundles runtime-required skills (existsSync-guarded).
 build_assets/hyperframes/skills/*
 !build_assets/hyperframes/skills/hyperframes/
 !build_assets/hyperframes/skills/hyperframes/**
@@ -32,6 +32,20 @@ build_assets/hyperframes/skills/*
 !build_assets/hyperframes/skills/hyperframes-cli/**
 !build_assets/hyperframes/skills/gsap/
 !build_assets/hyperframes/skills/gsap/**
+
+# media-use: audio engine (TTS/BGM/SFX) required by scripts/audio.mjs at runtime
+!build_assets/hyperframes/skills/media-use/
+!build_assets/hyperframes/skills/media-use/**
+
+# aiflow-*: build pipeline skills loaded by run_aiflow_build_skills.py
+!build_assets/hyperframes/skills/aiflow-build-storyboard/
+!build_assets/hyperframes/skills/aiflow-build-storyboard/**
+!build_assets/hyperframes/skills/aiflow-build-frame-visual/
+!build_assets/hyperframes/skills/aiflow-build-frame-visual/**
+!build_assets/hyperframes/skills/aiflow-build-frame-html/
+!build_assets/hyperframes/skills/aiflow-build-frame-html/**
+!build_assets/hyperframes/skills/aiflow-verify-frame/
+!build_assets/hyperframes/skills/aiflow-verify-frame/**
 
 # Prebuilt package outputs are regenerated inside the image.
 build_assets/hyperframes/packages/*/dist/
