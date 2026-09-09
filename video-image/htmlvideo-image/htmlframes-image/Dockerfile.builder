@@ -75,6 +75,7 @@ RUN --mount=type=cache,target=/root/.bun \
 # Core source is co-resident because studio-server <-> core have circular imports.
 # All four are copied in ONE layer, then built in two RUNs for tight error scopes.
 # ==============================================================================
+COPY build_assets/hyperframes/scripts            /app/hyperframes/scripts
 COPY build_assets/hyperframes/packages/parsers       /app/hyperframes/packages/parsers
 COPY build_assets/hyperframes/packages/lint          /app/hyperframes/packages/lint
 COPY build_assets/hyperframes/packages/studio-server /app/hyperframes/packages/studio-server
@@ -95,9 +96,11 @@ COPY build_assets/hyperframes/packages/shader-transitions /app/hyperframes/packa
 COPY build_assets/hyperframes/packages/engine            /app/hyperframes/packages/engine
 
 RUN echo "==> [T1b] build shader-transitions + engine (parallel)" \
-  && bun run --filter @hyperframes/shader-transitions build & \
-  && bun run --filter @hyperframes/engine build & \
-  && wait \
+  && ( \
+    bun run --filter @hyperframes/shader-transitions build & \
+    bun run --filter @hyperframes/engine build & \
+    wait \
+  ) \
   && echo "==> [T1b] shader-transitions + engine done"
 
 # ==============================================================================
