@@ -38,7 +38,10 @@ export async function calumaJSON(body, deps = {}) {
   const url = `${config.host}${config.apiMethod}`;
   const res = await fetchImpl(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Referer: "caluma.ai",
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
