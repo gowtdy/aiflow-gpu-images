@@ -76,7 +76,8 @@ const r3 = (x) => Number(x.toFixed(3));
 // model per subprocess, so firing every line at once multiplies that cost by
 // the line count. mapWithConcurrency caps how many run at once — still
 // parallel, just bounded.
-const ttsConcurrency = Math.max(1, Number(process.env.HYPERFRAMES_TTS_CONCURRENCY) || 4);
+// 并发先调整为1观察
+const ttsConcurrency = Math.max(1, Number(process.env.HYPERFRAMES_TTS_CONCURRENCY) || 1);
 
 const hyperframesDir = resolve(flag("hyperframes", "."));
 const requestPath = resolve(flag("request", join(hyperframesDir, "audio_request.json")));
