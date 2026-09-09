@@ -16,7 +16,12 @@ export function parseCalumaVoice(voiceId) {
   return { modelcat, modelname };
 }
 
-export function buildGenAudioBody({ text, voiceId, tstamp = Math.floor(Date.now() / 1000) }) {
+/** Unix timestamp in seconds (UTC). */
+function utcTimestampSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
+export function buildGenAudioBody({ text, voiceId, tstamp = utcTimestampSeconds() }) {
   const { modelcat, modelname } = parseCalumaVoice(voiceId);
   return {
     domain: config.tts.domain,
