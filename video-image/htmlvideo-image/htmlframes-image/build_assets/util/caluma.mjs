@@ -2,7 +2,7 @@
 // Requires the process to be started with `node --experimental-strip-types`
 // so `./signatureUtil.ts` can be imported.
 
-import { generateSoundSignature } from "./signatureUtil.ts";
+import { generateSignature } from "./signatureUtil.ts";
 import { config } from "../config/config.js";
 
 export function parseCalumaVoice(voiceId) {
@@ -28,7 +28,7 @@ export function buildGenAudioBody({ text, voiceId, tstamp = utcTimestampSeconds(
     email: config.tts.email,
     modelcat,
     modelname,
-    snature: generateSoundSignature(text, tstamp),
+    snature: generateSignature(text, tstamp),
     subscript: config.tts.subscript,
     t: config.tts.t,
     text,
