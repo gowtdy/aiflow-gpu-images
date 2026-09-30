@@ -21,12 +21,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INIT_SCRIPT="${SCRIPT_DIR}/init_with_brief.py"
 SKILLS_SCRIPT="${SCRIPT_DIR}/run_aiflow_build_skills.py"
+TTS_SCRIPT="${SCRIPT_DIR}/audio.mjs"
 FRAME_PACKETS_SCRIPT="${SCRIPT_DIR}/frame-packets.mjs"
 ASSEMBLE_SCRIPT="${SCRIPT_DIR}/assemble-index.mjs"
 
 NAME="fourth-video"
 DATA_DIR="/app/videos"
 PROJECT_DIR="${DATA_DIR}/${NAME}"
+LANGUAGE="zh"
+VOICE="china|wenqian-femalea"
 
 DRY_RUN=0
 for arg in "$@"; do
@@ -36,47 +39,51 @@ for arg in "$@"; do
   fi
 done
 
-echo "init_with_brief → ${PROJECT_DIR}"
-python3 "${INIT_SCRIPT}" \
-  --name "${NAME}" \
-  --data-dir "${DATA_DIR}" \
-  --example blank \
-  --skip-skills \
-  --topic "如何选择一支股票？" \
-  --aspect 1920x1080 \
-  --language zh \
-  --length 40s \
-  --angle practitioner \
-  --angle how-to \
-  --tone humorous \
-  --audience "everyday investors" \
-  --preset capsule \
-  "$@"
+#echo "init_with_brief → ${PROJECT_DIR}"
+#python3 "${INIT_SCRIPT}" \
+#  --name "${NAME}" \
+#  --data-dir "${DATA_DIR}" \
+#  --example blank \
+#  --skip-skills \
+#  --topic "如何选择一支股票？" \
+#  --aspect 1920x1080 \
+#  --language ${LANGUAGE} \
+#  --voice ${VOICE} \
+#  --length 40s \
+#  --angle practitioner \
+#  --angle how-to \
+#  --tone humorous \
+#  --audience "everyday investors" \
+#  --preset capsule \
+#  "$@"
+#
+#if [[ "${DRY_RUN}" -eq 1 ]]; then
+#  echo "dry-run: skipping skills / frame-packets / assemble / verify / render"
+#  exit 0
+#fi
+#
+#echo "aiflow skill storyboard → ${PROJECT_DIR}"
+#python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill storyboard
 
-if [[ "${DRY_RUN}" -eq 1 ]]; then
-  echo "dry-run: skipping skills / frame-packets / assemble / verify / render"
-  exit 0
-fi
+echo "tts generate"
+node "${TTS_SCRIPT}" --videodir "${PROJECT_DIR}" --voice "${VOICE}"
 
-echo "aiflow skill storyboard → ${PROJECT_DIR}"
-python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill storyboard
-
-echo "aiflow skill visual → ${PROJECT_DIR}"
-python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill visual
-
-echo "frame-packets → ${PROJECT_DIR}/.hyperframes/frame-packets"
-node "${FRAME_PACKETS_SCRIPT}" --project "${PROJECT_DIR}"
-
-echo "aiflow skill html → ${PROJECT_DIR}"
-python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill html
-
-#echo "assemble-index → ${PROJECT_DIR}/index.html"
-#node "${ASSEMBLE_SCRIPT}" --videodir "${PROJECT_DIR}"
-
-echo "aiflow skill verify → ${PROJECT_DIR}"
-python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill verify
-
-echo "hyperframes render → ${PROJECT_DIR}/renders/${NAME}.mp4"
-npx hyperframes render "${PROJECT_DIR}" \
-  --quality high \
-  --output "${PROJECT_DIR}/renders/${NAME}.mp4"
+#echo "aiflow skill visual → ${PROJECT_DIR}"
+#python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill visual
+#
+#echo "frame-packets → ${PROJECT_DIR}/.hyperframes/frame-packets"
+#node "${FRAME_PACKETS_SCRIPT}" --project "${PROJECT_DIR}"
+#
+#echo "aiflow skill html → ${PROJECT_DIR}"
+#python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill html
+#
+##echo "assemble-index → ${PROJECT_DIR}/index.html"
+##node "${ASSEMBLE_SCRIPT}" --videodir "${PROJECT_DIR}"
+#
+#echo "aiflow skill verify → ${PROJECT_DIR}"
+#python3 "${SKILLS_SCRIPT}" --videodir "${PROJECT_DIR}" --skill verify
+#
+#echo "hyperframes render → ${PROJECT_DIR}/renders/${NAME}.mp4"
+#npx hyperframes render "${PROJECT_DIR}" \
+#  --quality high \
+#  --output "${PROJECT_DIR}/renders/${NAME}.mp4"

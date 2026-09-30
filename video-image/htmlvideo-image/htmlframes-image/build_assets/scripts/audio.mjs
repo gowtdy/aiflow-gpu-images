@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import { parseStoryboard } from "./lib/storyboard.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_ENGINE = "/app/hyperframes/skills/media-use/audio/scripts/audio.mjs";
+const DEFAULT_ENGINE = "/app/hyperframes/skills/media-use/audio/scripts/audio_aiflow.mjs";
 const flag = (argv, name, def) => {
   const i = argv.indexOf(`--${name}`);
   return i >= 0 && i + 1 < argv.length ? argv[i + 1] : def;
@@ -83,7 +83,8 @@ function runEngine({ request, hyperframesDir, neutral, only, extra = [] }, die) 
     only,
     ...extra,
   ];
-  const r = spawnSync("node", args, { stdio: "inherit" });
+  // --experimental-strip-types: engine imports util/signatureUtil.ts via caluma.mjs
+  const r = spawnSync("node", ["--experimental-strip-types", ...args], { stdio: "inherit" });
   if (r.status !== 0) die(`media audio engine exited ${r.status}`);
 }
 

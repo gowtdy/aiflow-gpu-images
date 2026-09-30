@@ -1,0 +1,51 @@
+# Builder-only context: shrink upload; CLI build-copy only needs warm-grain + a few skills.
+
+bak/
+example/
+modify/
+.git/
+.DS_Store
+**/.DS_Store
+**/node_modules/
+**/.bun/
+**/.turbo/
+**/coverage/
+.env
+.env.*
+!.env.example
+*.mp4
+*.log
+
+# Tests are not needed to compile the CLI (~47MB producer/tests alone).
+build_assets/hyperframes/packages/*/tests/
+build_assets/hyperframes/packages/producer/tests/
+
+# Registry: build-copy only needs examples/warm-grain.
+build_assets/hyperframes/registry/blocks/
+build_assets/hyperframes/registry/components/
+
+# Skills: build-copy bundles runtime-required skills (existsSync-guarded).
+build_assets/hyperframes/skills/*
+!build_assets/hyperframes/skills/hyperframes/
+!build_assets/hyperframes/skills/hyperframes/**
+!build_assets/hyperframes/skills/hyperframes-cli/
+!build_assets/hyperframes/skills/hyperframes-cli/**
+!build_assets/hyperframes/skills/gsap/
+!build_assets/hyperframes/skills/gsap/**
+
+# media-use: audio engine (TTS/BGM/SFX) required by scripts/audio.mjs at runtime
+!build_assets/hyperframes/skills/media-use/
+!build_assets/hyperframes/skills/media-use/**
+
+# aiflow-*: build pipeline skills loaded by run_aiflow_build_skills.py
+!build_assets/hyperframes/skills/aiflow-build-storyboard/
+!build_assets/hyperframes/skills/aiflow-build-storyboard/**
+!build_assets/hyperframes/skills/aiflow-build-frame-visual/
+!build_assets/hyperframes/skills/aiflow-build-frame-visual/**
+!build_assets/hyperframes/skills/aiflow-build-frame-html/
+!build_assets/hyperframes/skills/aiflow-build-frame-html/**
+!build_assets/hyperframes/skills/aiflow-verify-frame/
+!build_assets/hyperframes/skills/aiflow-verify-frame/**
+
+# Prebuilt package outputs are regenerated inside the image.
+build_assets/hyperframes/packages/*/dist/
