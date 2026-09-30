@@ -29,7 +29,7 @@ NAME="fourth-video"
 DATA_DIR="/app/videos"
 PROJECT_DIR="${DATA_DIR}/${NAME}"
 LANGUAGE="zh"
-VOICE="english|voice-lady-female"
+VOICE="china|wenqian-femalea"
 
 DRY_RUN=0
 for arg in "$@"; do
