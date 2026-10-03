@@ -179,13 +179,13 @@ docker run --gpus all -it --rm whisper-transcribe-image:v100-0.1 \
 # start-whisper-v100-image.sh
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="whisper-transcribe-image:v100-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="v100-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 
 # start-whisper-rtx50-image.sh
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="whisper-transcribe-image:rtx50-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="rtx50-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 
 # stop-whisper-image.sh

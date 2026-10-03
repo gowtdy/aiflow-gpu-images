@@ -102,7 +102,7 @@ docker build -t whisper-transcribe-image:rtx50-$VER \
 set -e
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="whisper-transcribe-image:v100-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="v100-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -112,7 +112,7 @@ docker compose -f docker-compose.yml up -d
 set -e
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="whisper-transcribe-image:rtx50-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="rtx50-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -283,7 +283,7 @@ docker build -t funasr-transcribe-image:rtx50-$VER \
 set -e
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="funasr-transcribe-image:v100-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="v100-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -293,7 +293,7 @@ docker compose -f docker-compose.yml up -d
 set -e
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="funasr-transcribe-image:rtx50-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="rtx50-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -469,7 +469,7 @@ docker build -t parakeet-transcribe-image:rtx50-$VER \
 set -e
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="parakeet-transcribe-image:v100-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="v100-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 ```
 
@@ -479,7 +479,7 @@ docker compose -f docker-compose.yml up -d
 set -e
 export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
 export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
-export IMG_TAG="parakeet-transcribe-image:rtx50-$(cat "$(dirname "$0")/version.txt")"
+export IMG_TAG="rtx50-$(cat "$(dirname "$0")/version.txt")"
 docker compose -f docker-compose.yml up -d
 ```
 
