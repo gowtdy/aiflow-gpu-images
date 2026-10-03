@@ -40,6 +40,8 @@ voice-image/transcribe-image/
 │   ├── version.txt
 │   ├── build-whisper-v100-image.sh
 │   ├── build-whisper-rtx50-image.sh
+│   ├── start-whisper-image.sh
+│   ├── stop-whisper-image.sh
 │   ├── docker-compose.yml
 │   └── build_assets/
 │       └── requirements.txt
@@ -48,6 +50,8 @@ voice-image/transcribe-image/
 │   ├── version.txt
 │   ├── build-parakeet-v100-image.sh
 │   ├── build-parakeet-rtx50-image.sh
+│   ├── start-parakeet-image.sh
+│   ├── stop-parakeet-image.sh
 │   ├── docker-compose.yml
 │   └── build_assets/
 │       └── requirements.txt
@@ -56,6 +60,8 @@ voice-image/transcribe-image/
     ├── version.txt
     ├── build-funasr-v100-image.sh
     ├── build-funasr-rtx50-image.sh
+    ├── start-funasr-image.sh
+    ├── stop-funasr-image.sh
     ├── docker-compose.yml
     └── build_assets/
         └── requirements.txt
@@ -125,7 +131,7 @@ docker-compose.yml 仅用于**本地冒烟验证**，不是线上编排；线上
 ```yaml
 services:
   whisper-transcribe:
-    image: whisper-transcribe-image:v100-0.1   # RTX50 机器改为 rtx50-0.1
+    image: whisper-transcribe-image:${IMG_TAG:-v100-0.1}   # RTX50 机器 IMG_TAG=rtx50-0.1
     hostname: whisper-transcribe
     container_name: whisper-transcribe
     restart: unless-stopped
@@ -162,11 +168,29 @@ docker run --gpus all -it --rm whisper-transcribe-image:v100-0.1 \
 
 三件套分别为 `import faster_whisper` / `import nemo.collections.asr` / `import funasr`，再 `nvidia-smi` 确认 GPU 可见；有 mount 权重时加跑一次最小转写确认模型可加载推理。
 
+### 7.4 start / stop 脚本（本地起停）
+
+沿用仓库 start/stop 惯例（对齐 host `aigc` 用户后 `docker compose up/down`）：
+
+```bash
+# start-whisper-image.sh
+export AIGC_UID=${AIGC_UID:-$(id -u aigc 2>/dev/null || echo 1001)}
+export AIGC_GID=${AIGC_GID:-$(id -g aigc 2>/dev/null || echo 1001)}
+export IMG_TAG="${IMG_TAG:-v100-$(cat "$(dirname "$0")/version.txt")}"   # 需跑 RTX50 时 override，或改这一行
+docker compose -f docker-compose.yml up -d
+
+# stop-whisper-image.sh
+docker compose -f docker-compose.yml down
+```
+
+start 默认拉起 v100 镜像；切 RTX50 用 `IMG_TAG=rtx50-0.1 ./start-whisper-image.sh`，或改脚本里那一行。parakeet / funasr 类推。
+
 ## 8. 每个镜像交付物
 
 - `Dockerfile`
 - `version.txt`
 - 两个 build 脚本（`build-<name>-v100-image.sh` / `build-<name>-rtx50-image.sh`）
+- `start-<name>-image.sh` / `stop-<name>-image.sh`
 - `docker-compose.yml`
 - `build_assets/requirements.txt`
 
