@@ -1,0 +1,1 @@
+使用 parakeet 进行transcribe的基础image
