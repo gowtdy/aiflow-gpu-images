@@ -1,0 +1,1 @@
+使用 funasr 进行transcribe的基础image
