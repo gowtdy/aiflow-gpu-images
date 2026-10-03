@@ -216,5 +216,8 @@ parakeet / funasr 视 `[待验证]` 结果，可能额外各加一个 `constrain
 实现阶段在 V100 / RTX 50 上各实测一次，结果决定 requirements 是否需按 base 分叉：
 
 1. **NeMo（parakeet）在 pytorch 2.4.1 与 2.11.0 下各自可用的版本组合** —— 三个里最大风险；若两版 torch 不共用同一 NeMo 版本，该镜像 requirements 需按 base 分叉（两套约束，条件安装）。
+   - **V100（torch 2.4.1）实测：** `nemo_toolkit[asr]==2.6.1` + `numpy<2` 可用（2.6.2+ 要求 torch≥2.6.0，3.0.0 要求 torch 2.14/CUDA 13；`numpy<2` 保住 base 的 numpy 1.26.4 供 dctorch）。**RTX 50（torch 2.11.0）待验** —— 2.6.1 是否兼容 torch 2.11，或需升 2.6.2+，若不适配则 requirements 按 base 分叉。
 2. **ctranslate2 对 CUDA 12.1（V100）与 12.8 / sm_120（RTX 50）的版本覆盖** —— 能否单一版本两 base 通用。
+   - **V100（CUDA 12.1 / sm_70）实测：** ctranslate2 4.8.2 单 wheel 可用。**RTX 50（CUDA 12.8 / sm_120）待验。**
 3. **funasr / torchaudio 在两个 torch 版本上的兼容** —— 风险较低，大概率一版通用。
+   - **V100（torch 2.4.1）实测：** funasr 1.4.16 安装成功、可导入。**RTX 50（torch 2.11.0）待验。**
